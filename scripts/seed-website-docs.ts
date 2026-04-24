@@ -46,6 +46,13 @@ const SEED: Record<DocSlug, Array<{ heading: string; content: string }>> = {
       content: "Low-friction inbox. Promote to BUILD when ready.",
     },
   ],
+  MYSTORY: [
+    {
+      heading: "Preamble",
+      content:
+        "Raw notes about Edmund — background, values, experiences, inflection points. Draw from this to shape site copy and to compact into long-term memory over time.",
+    },
+  ],
 };
 
 async function seed() {

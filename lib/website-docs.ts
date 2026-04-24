@@ -1,11 +1,17 @@
 import { supabaseAdmin } from "./supabase-server";
 
-export type DocSlug = "IDEAS" | "BUILD" | "CONTEXT" | "INSTRUCTIONS";
+export type DocSlug =
+  | "IDEAS"
+  | "BUILD"
+  | "CONTEXT"
+  | "INSTRUCTIONS"
+  | "MYSTORY";
 export const VALID_SLUGS: DocSlug[] = [
   "IDEAS",
   "BUILD",
   "CONTEXT",
   "INSTRUCTIONS",
+  "MYSTORY",
 ];
 
 type SectionRow = {
