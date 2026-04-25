@@ -3,6 +3,7 @@ import { Arc } from "@/components/sections/arc";
 import { Projects } from "@/components/sections/projects";
 import { Wins } from "@/components/sections/wins";
 import { Channels } from "@/components/sections/channels";
+import { Ask } from "@/components/sections/ask";
 import { Contact } from "@/components/sections/contact";
 
 export default function Home() {
@@ -13,6 +14,7 @@ export default function Home() {
       <Projects />
       <Wins />
       <Channels />
+      <Ask />
       <Contact />
     </main>
   );
