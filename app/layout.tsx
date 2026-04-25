@@ -15,9 +15,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://whatelz-uat.vercel.app";
+const SITE_TITLE = "whatelz.ai — Edmund Lin Zhenming";
+const SITE_DESCRIPTION =
+  "AI Engineer. 4 years across data science, product, and AI engineering. Currently shipping AI to 5,000+ Financial Advisors at Prudential.";
+
 export const metadata: Metadata = {
-  title: "whatelz.ai",
-  description: "What ELZ can you build with AI?",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: "%s — whatelz.ai",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "whatelz.ai",
+  authors: [{ name: "Edmund Lin Zhenming" }],
+  creator: "Edmund Lin Zhenming",
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    siteName: "whatelz.ai",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

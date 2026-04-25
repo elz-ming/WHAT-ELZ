@@ -3,7 +3,11 @@ import crypto from "crypto";
 
 function sign(payload: string): string {
   const secret = process.env.WEBSITE_MCP_TOKEN!;
-  return crypto.createHmac("sha256", secret).update(payload).digest("hex").slice(0, 32);
+  return crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex")
+    .slice(0, 32);
 }
 
 export async function GET(req: NextRequest) {
@@ -11,9 +15,11 @@ export async function GET(req: NextRequest) {
   const redirect_uri = url.searchParams.get("redirect_uri");
   const state = url.searchParams.get("state") ?? "";
   const code_challenge = url.searchParams.get("code_challenge") ?? "";
-  const code_challenge_method = url.searchParams.get("code_challenge_method") ?? "";
+  const code_challenge_method =
+    url.searchParams.get("code_challenge_method") ?? "";
 
-  if (!redirect_uri) return new NextResponse("Missing redirect_uri", { status: 400 });
+  if (!redirect_uri)
+    return new NextResponse("Missing redirect_uri", { status: 400 });
 
   const now = Math.floor(Date.now() / 1000);
   const payload = `${code_challenge}.${code_challenge_method}.${now}`;
