@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
 function sign(payload: string): string {
-  const secret = process.env.WEBSITE_MCP_TOKEN!;
+  const secret = process.env.MCP_TOKEN!;
   return crypto
     .createHmac("sha256", secret)
     .update(payload)
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(
     {
-      access_token: process.env.WEBSITE_MCP_TOKEN!,
+      access_token: process.env.MCP_TOKEN!,
       token_type: "Bearer",
       expires_in: 3600 * 24 * 30,
     },

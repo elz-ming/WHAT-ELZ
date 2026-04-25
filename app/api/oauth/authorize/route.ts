@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
 function sign(payload: string): string {
-  const secret = process.env.WEBSITE_MCP_TOKEN!;
+  const secret = process.env.MCP_TOKEN!;
   return crypto
     .createHmac("sha256", secret)
     .update(payload)

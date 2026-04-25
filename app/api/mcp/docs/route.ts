@@ -208,7 +208,7 @@ const TOOL_SCHEMAS = [
 function checkAuth(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const expected = process.env.WEBSITE_MCP_TOKEN;
+  const expected = process.env.MCP_TOKEN;
   if (!expected || token !== expected) {
     return NextResponse.json(
       { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" } },
