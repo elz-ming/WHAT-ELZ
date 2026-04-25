@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# whatelz.ai
 
-## Getting Started
+Personal site of Edmund Lin Zhenming &mdash; AI Engineer.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router) &middot; React 19 &middot; TypeScript (strict)
+- Tailwind CSS v4
+- next-themes (manual light/dark toggle)
+- Supabase (server-side client wired for future use)
+- Hosted on Vercel
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3100
+npm run build
+npm run start
+npm run lint
+npm run format   # prettier write
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploys
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **uat** branch &rarr; auto-deploys to <https://whatelz-uat.vercel.app>
+- **main** branch &rarr; production (currently dormant)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Copy `.env.example` to `.env.local` and fill in the Supabase values. The
+example file lists the required variables.
 
-To learn more about Next.js, take a look at the following resources:
+## Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/         Next.js routes (App Router)
+components/  Shared UI (header, footer, theme toggle, ui/ primitives)
+content/     Long-form content (mdx etc., to be added)
+lib/         Utilities, server clients
+public/      Static assets
+supabase/    SQL migrations + seed
+```

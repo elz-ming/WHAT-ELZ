@@ -1,0 +1,7 @@
+.next
+node_modules
+.vercel
+package-lock.json
+tsconfig.tsbuildinfo
+public
+supabase/migrations
