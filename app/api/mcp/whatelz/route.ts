@@ -210,11 +210,15 @@ function checkAuth(req: NextRequest) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const expected = process.env.MCP_TOKEN;
   if (!expected || token !== expected) {
+    const url = new URL(req.url);
+    const resourceMetadata = `${url.protocol}//${url.host}/api/mcp/whatelz/.well-known/oauth-protected-resource`;
     return NextResponse.json(
       { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" } },
       {
         status: 401,
-        headers: { "WWW-Authenticate": 'Bearer realm="website-mcp"' },
+        headers: {
+          "WWW-Authenticate": `Bearer realm="whatelz-mcp", resource_metadata="${resourceMetadata}"`,
+        },
       },
     );
   }
@@ -247,7 +251,7 @@ export async function POST(req: NextRequest) {
         result: {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "website-docs", version: "1.0.0" },
+          serverInfo: { name: "whatelz", version: "1.0.0" },
         },
       });
     }
