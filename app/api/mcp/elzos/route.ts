@@ -121,12 +121,7 @@ const TOOL_SCHEMAS = [
       "Rename a section. Requires expected_version. Fails on duplicate heading.",
     inputSchema: {
       type: "object",
-      required: [
-        "doc_slug",
-        "old_heading",
-        "new_heading",
-        "expected_version",
-      ],
+      required: ["doc_slug", "old_heading", "new_heading", "expected_version"],
       properties: {
         doc_slug: { type: "string", enum: VALID_SLUGS },
         old_heading: { type: "string" },
@@ -180,8 +175,7 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
   list_docs: async () => listDocs(),
   list_sections: (a) => listSections(a.doc_slug as DocSlug),
   read_doc: (a) => readDoc(a.doc_slug as DocSlug),
-  read_section: (a) =>
-    readSection(a.doc_slug as DocSlug, a.heading as string),
+  read_section: (a) => readSection(a.doc_slug as DocSlug, a.heading as string),
   list_recent_changes: (a) =>
     listRecentChanges(
       a.doc_slug as DocSlug | undefined,
@@ -244,11 +238,17 @@ function checkAuth(req: NextRequest) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const expected = process.env.ELZOS_MCP_TOKEN;
   if (!expected || token !== expected) {
+    // Point MCP clients at this MCP's own protected-resource metadata so they
+    // discover ELZ OS's auth server (not Whatelz's, which sits at the origin).
+    const url = new URL(req.url);
+    const resourceMetadata = `${url.protocol}//${url.host}/api/mcp/elzos/.well-known/oauth-protected-resource`;
     return NextResponse.json(
       { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" } },
       {
         status: 401,
-        headers: { "WWW-Authenticate": 'Bearer realm="elzos-mcp"' },
+        headers: {
+          "WWW-Authenticate": `Bearer realm="elzos-mcp", resource_metadata="${resourceMetadata}"`,
+        },
       },
     );
   }
