@@ -236,10 +236,15 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
 function checkAuth(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const expected = process.env.ELZOS_MCP_TOKEN;
-  if (!expected || token !== expected) {
-    // Point MCP clients at this MCP's own protected-resource metadata so they
-    // discover ELZ OS's auth server (not Whatelz's, which sits at the origin).
+  // Both MCPs (whatelz docs + elzos) accept the same bearer so Claude Desktop's
+  // OAuth flow can ride the existing root /.well-known/* + /api/oauth/*
+  // discovery. ELZOS_MCP_TOKEN is kept as an alias for direct-bearer callers.
+  const expected = process.env.WEBSITE_MCP_TOKEN ?? process.env.ELZOS_MCP_TOKEN;
+  const elzosAlias = process.env.ELZOS_MCP_TOKEN;
+  const accepted =
+    !!expected &&
+    (token === expected || (elzosAlias != null && token === elzosAlias));
+  if (!accepted) {
     const url = new URL(req.url);
     const resourceMetadata = `${url.protocol}//${url.host}/api/mcp/elzos/.well-known/oauth-protected-resource`;
     return NextResponse.json(
