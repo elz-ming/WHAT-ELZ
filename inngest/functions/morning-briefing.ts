@@ -5,19 +5,19 @@ export const morningBriefing = inngest.createFunction(
   { id: 'morning-briefing', name: 'Morning Briefing', triggers: [{ cron: 'TZ=Asia/Singapore 0 8 * * *' }] },
   async ({ step }) => {
     const summary = await step.run('build-summary', async () => {
-      const [{ data: newJobs }, { data: pendingApps }] = await Promise.all([
+      const [{ count: shortlistedJobs }, { count: readyApplications }] = await Promise.all([
         supabaseAdmin
           .from('job_listings')
-          .select('id', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('status', 'shortlisted'),
         supabaseAdmin
           .from('applications')
-          .select('id', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('status', 'ready'),
       ]);
       return {
-        shortlistedJobs:  (newJobs as unknown as { count: number } | null)?.count ?? 0,
-        readyApplications: (pendingApps as unknown as { count: number } | null)?.count ?? 0,
+        shortlistedJobs:   shortlistedJobs  ?? 0,
+        readyApplications: readyApplications ?? 0,
       };
     });
 
