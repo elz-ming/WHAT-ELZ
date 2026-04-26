@@ -43,9 +43,7 @@ export default async function AdminPage() {
         <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           Unauthorized
         </p>
-        <p className="text-sm text-zinc-400">
-          {email} is not allowed here.
-        </p>
+        <p className="text-sm text-zinc-400">{email} is not allowed here.</p>
         <SignOutButton>
           <button className="mt-4 border border-zinc-700 px-4 py-2 font-mono text-xs tracking-widest uppercase text-zinc-400 transition-colors hover:border-zinc-400 hover:text-zinc-100">
             Sign out
@@ -140,20 +138,13 @@ export default async function AdminPage() {
           <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
             MCP Endpoints
           </p>
-          <h2 className="mt-3 text-xl font-semibold tracking-tight">
-            Servers
-          </h2>
+          <h2 className="mt-3 text-xl font-semibold tracking-tight">Servers</h2>
           <div className="mt-4 space-y-2">
             {[
               {
-                name: "whatelz (docs)",
+                name: "ADMIN_WHATELZ",
                 path: "/api/mcp/whatelz",
                 tools: "12 tools",
-              },
-              {
-                name: "elzos (tenant)",
-                path: "/api/mcp/elzos",
-                tools: "OAuth + tools",
               },
             ].map(({ name, path, tools }) => (
               <div
@@ -162,7 +153,9 @@ export default async function AdminPage() {
               >
                 <div>
                   <p className="font-semibold text-zinc-100">{name}</p>
-                  <code className="font-mono text-xs text-zinc-500">{path}</code>
+                  <code className="font-mono text-xs text-zinc-500">
+                    {path}
+                  </code>
                 </div>
                 <span className="font-mono text-xs text-zinc-600">{tools}</span>
               </div>
