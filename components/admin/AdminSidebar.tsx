@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const NAV = [
-  { href: '/admin',          label: 'Dashboard' },
-  { href: '/admin/apply',    label: 'Apply'     },
-  { href: '/admin/hunt',     label: 'Hunt'      },
-  { href: '/admin/listen',   label: 'Listen'    },
-  { href: '/admin/presence', label: 'Presence'  },
+  { href: '/admin',           label: 'Dashboard' },
+  { href: '/admin/apply',     label: 'Apply'     },
+  { href: '/admin/hunt',      label: 'Hunt'      },
+  { href: '/admin/listen',    label: 'Listen'    },
+  { href: '/admin/presence',  label: 'Presence'  },
+  { href: '/admin/developer', label: 'Developer' },
 ] as const;
 
 export function AdminSidebar() {
