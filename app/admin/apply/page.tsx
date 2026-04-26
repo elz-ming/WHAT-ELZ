@@ -10,7 +10,7 @@ export default async function ApplyPage() {
     <div className="max-w-3xl space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Apply</h1>
+          <h1 className="text-2xl font-semibold text-zinc-900">Apply</h1>
           <p className="text-sm text-zinc-500 mt-1">
             {ready > 0
               ? `${ready} application${ready > 1 ? 's' : ''} ready to send.`
@@ -19,7 +19,7 @@ export default async function ApplyPage() {
         </div>
         <Link
           href="/admin/apply/resume"
-          className="text-sm px-4 py-2 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          className="text-sm px-4 py-2 rounded border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
         >
           Resume Builder →
         </Link>

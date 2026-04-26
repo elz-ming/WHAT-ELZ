@@ -27,10 +27,10 @@ export function JobFeed({ initialListings }: Props) {
   return (
     <div className="space-y-3">
       {listings.map(l => (
-        <div key={l.id} className="border border-zinc-200 dark:border-zinc-800 rounded p-4 space-y-2">
+        <div key={l.id} className="border border-zinc-200 rounded p-4 space-y-2">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <p className="text-sm font-medium text-zinc-900">
                 {l.company} — {l.role}
               </p>
               <p className="text-xs text-zinc-400">
@@ -42,21 +42,21 @@ export function JobFeed({ initialListings }: Props) {
               <button
                 onClick={() => act(l.id, 'shortlisted')}
                 disabled={acting === l.id}
-                className="text-xs px-3 py-1 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-50"
+                className="text-xs px-3 py-1 rounded bg-zinc-900 text-white disabled:opacity-50"
               >
                 Shortlist
               </button>
               <button
                 onClick={() => act(l.id, 'rejected_by_user')}
                 disabled={acting === l.id}
-                className="text-xs px-3 py-1 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-400 disabled:opacity-50"
+                className="text-xs px-3 py-1 rounded border border-zinc-200 text-zinc-400 disabled:opacity-50"
               >
                 Dismiss
               </button>
             </div>
           </div>
           {l.score_reasoning && (
-            <p className="text-xs text-zinc-500 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+            <p className="text-xs text-zinc-500 border-t border-zinc-100 pt-2">
               {l.score_reasoning}
             </p>
           )}

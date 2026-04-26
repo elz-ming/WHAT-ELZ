@@ -6,7 +6,7 @@ export default async function ResumePage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Resume</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">Resume</h1>
         <p className="text-sm text-zinc-500 mt-1">
           AI drafts from your MYSTORY and profile. You edit. You save.
         </p>

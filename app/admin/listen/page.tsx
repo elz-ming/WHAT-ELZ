@@ -22,7 +22,7 @@ export default async function ListenPage() {
   return (
     <div className="max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Listen</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">Listen</h1>
         <p className="text-sm text-zinc-500 mt-1">
           Job-related emails from elz.work22@gmail.com. Syncs every 30 minutes.
         </p>

@@ -46,16 +46,16 @@ export function ApplicationPipeline({ initialApplications }: Props) {
               <span className="text-xs text-zinc-400">({apps.length})</span>
             </div>
             {apps.length === 0 ? (
-              <p className="text-xs text-zinc-300 dark:text-zinc-600 pl-2">—</p>
+              <p className="text-xs text-zinc-300 pl-2">—</p>
             ) : (
               <div className="space-y-2">
                 {apps.map(app => (
                   <div
                     key={app.id}
-                    className="flex items-center justify-between border border-zinc-200 dark:border-zinc-800 rounded px-4 py-3"
+                    className="flex items-center justify-between border border-zinc-200 rounded px-4 py-3"
                   >
                     <div>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <p className="text-sm font-medium text-zinc-900">
                         {app.job_listings?.company ?? 'Unknown'} — {app.job_listings?.role ?? '—'}
                       </p>
                       <p className="text-xs text-zinc-400">
@@ -67,7 +67,7 @@ export function ApplicationPipeline({ initialApplications }: Props) {
                         <button
                           onClick={() => advance(app.id, 'submitted')}
                           disabled={updating === app.id}
-                          className="text-xs px-3 py-1 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-50"
+                          className="text-xs px-3 py-1 rounded bg-zinc-900 text-white disabled:opacity-50"
                         >
                           {updating === app.id ? '…' : 'Mark Submitted'}
                         </button>
@@ -76,7 +76,7 @@ export function ApplicationPipeline({ initialApplications }: Props) {
                         <button
                           onClick={() => advance(app.id, 'ready')}
                           disabled={updating === app.id}
-                          className="text-xs px-3 py-1 rounded border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
+                          className="text-xs px-3 py-1 rounded border border-zinc-300 text-zinc-700 disabled:opacity-50"
                         >
                           {updating === app.id ? '…' : 'Approve'}
                         </button>

@@ -41,7 +41,7 @@ export function CompanyList({ initialCompanies }: Props) {
     setCompanies(prev => prev.map(c => c.id === id ? { ...c, status: next } : c));
   }
 
-  const inputCls = "border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 text-sm bg-white dark:bg-zinc-900";
+  const inputCls = "border border-zinc-300 rounded px-2 py-1 text-sm bg-white";
 
   return (
     <div className="space-y-4">
@@ -49,14 +49,14 @@ export function CompanyList({ initialCompanies }: Props) {
         <p className="text-sm text-zinc-500">{companies.length} companies on watchlist</p>
         <button
           onClick={() => setAdding(v => !v)}
-          className="text-sm px-3 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+          className="text-sm px-3 py-1.5 rounded bg-zinc-900 text-white"
         >
           + Add company
         </button>
       </div>
 
       {adding && (
-        <div className="border border-zinc-200 dark:border-zinc-800 rounded p-4 space-y-3">
+        <div className="border border-zinc-200 rounded p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <input placeholder="Company name" value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -76,26 +76,24 @@ export function CompanyList({ initialCompanies }: Props) {
             </select>
           </div>
           <button onClick={handleAdd} disabled={saving || !form.name}
-            className="text-sm px-4 py-2 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-50">
+            className="text-sm px-4 py-2 rounded bg-zinc-900 text-white disabled:opacity-50">
             {saving ? 'Adding…' : 'Add'}
           </button>
         </div>
       )}
 
-      <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="divide-y divide-zinc-100">
         {companies.map(c => (
           <div key={c.id} className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{c.name}</p>
+              <p className="text-sm font-medium text-zinc-900">{c.name}</p>
               <p className="text-xs text-zinc-400">
                 {c.industry ?? '—'} · {c.ats_type ?? 'no ATS'}{c.ats_slug ? ` / ${c.ats_slug}` : ''} · P{c.priority}
               </p>
             </div>
             <button onClick={() => toggleStatus(c.id, c.status)}
               className={`text-xs px-2 py-1 rounded ${
-                c.status === 'active'
-                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'
-                  : 'text-zinc-400'
+                c.status === 'active' ? 'bg-zinc-100 text-zinc-600' : 'text-zinc-400'
               }`}>
               {c.status}
             </button>

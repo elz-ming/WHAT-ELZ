@@ -70,20 +70,20 @@ export function ResumeBuilder({ initialResumes }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="border border-zinc-200 dark:border-zinc-800 rounded p-4 space-y-4">
+      <div className="border border-zinc-200 rounded p-4 space-y-4">
         <h2 className="font-mono text-sm text-zinc-500 uppercase tracking-widest">Generate Draft</h2>
         <div className="flex gap-3 items-center flex-wrap">
           <select
             value={narrative}
             onChange={e => setNarrative(e.target.value)}
-            className="border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
+            className="border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
           >
             {NARRATIVES.map(n => <option key={n}>{n}</option>)}
           </select>
           <button
             onClick={handleDraft}
             disabled={drafting}
-            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-50"
+            className="px-4 py-2 text-sm rounded bg-zinc-900 text-white disabled:opacity-50"
           >
             {drafting ? 'Drafting…' : 'AI Draft'}
           </button>
@@ -92,18 +92,18 @@ export function ResumeBuilder({ initialResumes }: Props) {
       </div>
 
       {draft && (
-        <div className="border border-zinc-200 dark:border-zinc-800 rounded p-4 space-y-4">
+        <div className="border border-zinc-200 rounded p-4 space-y-4">
           <div className="flex items-center gap-3">
             <input
               value={label}
               onChange={e => setLabel(e.target.value)}
               placeholder="Label (e.g. AI Engineer — Apr 2026)"
-              className="flex-1 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-sm bg-white dark:bg-zinc-900"
+              className="flex-1 border border-zinc-300 rounded px-3 py-2 text-sm bg-white"
             />
             <button
               onClick={handleSave}
               disabled={saving || !label}
-              className="px-4 py-2 text-sm rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-50"
+              className="px-4 py-2 text-sm rounded bg-zinc-900 text-white disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save Resume'}
             </button>
@@ -112,11 +112,11 @@ export function ResumeBuilder({ initialResumes }: Props) {
           <div className="space-y-3 text-sm">
             <div>
               <p className="font-mono text-xs text-zinc-400 mb-1">SUMMARY</p>
-              <p className="text-zinc-700 dark:text-zinc-300">{draft.summary}</p>
+              <p className="text-zinc-700">{draft.summary}</p>
             </div>
             <div>
               <p className="font-mono text-xs text-zinc-400 mb-1">SKILLS</p>
-              <p className="text-zinc-700 dark:text-zinc-300">{draft.skills.join(' · ')}</p>
+              <p className="text-zinc-700">{draft.skills.join(' · ')}</p>
             </div>
             {draft.experience.map(exp => (
               <div key={exp.company}>
@@ -125,7 +125,7 @@ export function ResumeBuilder({ initialResumes }: Props) {
                 </p>
                 <ul className="list-disc list-inside space-y-1">
                   {exp.bullets.map((b, i) => (
-                    <li key={i} className="text-zinc-700 dark:text-zinc-300">{b}</li>
+                    <li key={i} className="text-zinc-700">{b}</li>
                   ))}
                 </ul>
               </div>
@@ -138,13 +138,13 @@ export function ResumeBuilder({ initialResumes }: Props) {
         <div className="space-y-2">
           <h2 className="font-mono text-sm text-zinc-500 uppercase tracking-widest">Saved Resumes</h2>
           {resumes.map(r => (
-            <div key={r.id} className="flex items-center justify-between border border-zinc-200 dark:border-zinc-800 rounded px-4 py-3">
+            <div key={r.id} className="flex items-center justify-between border border-zinc-200 rounded px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{r.label}</p>
+                <p className="text-sm font-medium text-zinc-900">{r.label}</p>
                 <p className="text-xs text-zinc-400">{new Date(r.created_at).toLocaleDateString()}</p>
               </div>
               {r.is_active && (
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">active</span>
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-500">active</span>
               )}
             </div>
           ))}
