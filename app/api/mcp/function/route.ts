@@ -6,6 +6,7 @@ import {
   updatePost,
   deletePost,
 } from "@/lib/blog";
+import { supabaseAdmin } from "@/lib/supabase-server";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -103,11 +104,15 @@ const TOOL_SCHEMAS = [
   },
 ];
 
-function checkAuth(req: NextRequest) {
+async function checkAuth(req: NextRequest) {
   const auth  = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const expected = process.env.MCP_TOKEN;
-  if (!expected || token !== expected) {
+  const { data } = await supabaseAdmin
+    .from("system_config")
+    .select("value")
+    .eq("key", "mcp_token")
+    .single();
+  if (!data?.value || token !== data.value) {
     const url = new URL(req.url);
     const resourceMetadata = `${url.protocol}//${url.host}/api/mcp/function/.well-known/oauth-protected-resource`;
     return NextResponse.json(
@@ -124,7 +129,7 @@ function checkAuth(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authFail = checkAuth(req);
+  const authFail = await checkAuth(req);
   if (authFail) return authFail;
 
   const body = await req.json().catch(() => null);

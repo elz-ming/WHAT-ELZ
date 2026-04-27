@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { supabaseAdmin } from "@/lib/supabase-server";
 
-function sign(payload: string): string {
-  const secret = process.env.MCP_TOKEN!;
+async function getMcpToken(): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("system_config")
+    .select("value")
+    .eq("key", "mcp_token")
+    .single();
+  return data?.value ?? null;
+}
+
+function sign(secret: string, payload: string): string {
   return crypto
     .createHmac("sha256", secret)
     .update(payload)
@@ -15,8 +24,11 @@ function s256(verifier: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const form = await req.formData();
-  const code = String(form.get("code") ?? "");
+  const secret = await getMcpToken();
+  if (!secret) return NextResponse.json({ error: "server_error" }, { status: 500 });
+
+  const form         = await req.formData();
+  const code         = String(form.get("code") ?? "");
   const code_verifier = String(form.get("code_verifier") ?? "");
 
   const [payloadB64, sig] = code.split(".");
@@ -24,29 +36,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_grant" }, { status: 400 });
 
   const payload = Buffer.from(payloadB64, "base64url").toString();
-  if (sign(payload) !== sig)
+  if (sign(secret, payload) !== sig)
     return NextResponse.json({ error: "invalid_grant" }, { status: 400 });
 
   const [challenge, method, issuedAt] = payload.split(".");
-  if (Number(issuedAt) < Math.floor(Date.now() / 1000) - 600) {
-    return NextResponse.json(
-      { error: "invalid_grant", reason: "expired" },
-      { status: 400 },
-    );
-  }
-  if (method !== "S256" || s256(code_verifier) !== challenge) {
-    return NextResponse.json(
-      { error: "invalid_grant", reason: "pkce_mismatch" },
-      { status: 400 },
-    );
-  }
+  if (Number(issuedAt) < Math.floor(Date.now() / 1000) - 600)
+    return NextResponse.json({ error: "invalid_grant", reason: "expired" }, { status: 400 });
+
+  if (method !== "S256" || s256(code_verifier) !== challenge)
+    return NextResponse.json({ error: "invalid_grant", reason: "pkce_mismatch" }, { status: 400 });
 
   return NextResponse.json(
-    {
-      access_token: process.env.MCP_TOKEN!,
-      token_type: "Bearer",
-      expires_in: 3600 * 24 * 30,
-    },
+    { access_token: secret, token_type: "Bearer", expires_in: 3600 * 24 * 30 },
     { headers: { "Access-Control-Allow-Origin": "*" } },
   );
 }
