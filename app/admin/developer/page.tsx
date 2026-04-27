@@ -1,4 +1,8 @@
 import type { Metadata } from 'next';
+import crypto from 'crypto';
+import { revalidatePath } from 'next/cache';
+import { supabaseAdmin } from '@/lib/supabase-server';
+import { PATTokenCard } from './_components/PATTokenCard';
 
 export const metadata: Metadata = { title: 'Developer — whatelz.ai' };
 
@@ -11,15 +15,47 @@ const LINKS = [
 ];
 
 const MCP_SERVERS = [
-  { name: 'ADMIN_WHATELZ',    path: '/api/mcp/whatelz',  tools: '12 tools — doc CRUD'   },
-  { name: 'FUNCTION_WHATELZ', path: '/api/mcp/function',  tools: '5 tools — blog write'  },
+  { name: 'ADMIN_WHATELZ',    path: '/api/mcp/whatelz',  tools: '12 tools — doc CRUD'  },
+  { name: 'FUNCTION_WHATELZ', path: '/api/mcp/function', tools: '5 tools — blog write' },
 ];
 
-export default function DeveloperPage() {
-  const mcpToken    = process.env.MCP_TOKEN ?? '';
-  const maskedToken = mcpToken
-    ? `${mcpToken.slice(0, 6)}${'•'.repeat(Math.max(0, mcpToken.length - 10))}${mcpToken.slice(-4)}`
-    : '(not set)';
+function generateToken(): string {
+  return 'mcp_' + crypto.randomBytes(24).toString('hex');
+}
+
+function maskToken(token: string): string {
+  if (token.length <= 10) return '•'.repeat(token.length);
+  return `${token.slice(0, 8)}${'•'.repeat(token.length - 12)}${token.slice(-4)}`;
+}
+
+async function getOrCreateToken(): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from('system_config')
+    .select('value')
+    .eq('key', 'mcp_token')
+    .single();
+
+  if (data?.value) return data.value as string;
+
+  const token = generateToken();
+  await supabaseAdmin
+    .from('system_config')
+    .upsert({ key: 'mcp_token', value: token });
+  return token;
+}
+
+async function rotateToken(): Promise<void> {
+  'use server';
+  const token = generateToken();
+  await supabaseAdmin
+    .from('system_config')
+    .upsert({ key: 'mcp_token', value: token });
+  revalidatePath('/admin/developer');
+}
+
+export default async function DeveloperPage() {
+  const token  = await getOrCreateToken();
+  const masked = maskToken(token);
 
   return (
     <div className="max-w-4xl space-y-12">
@@ -32,13 +68,7 @@ export default function DeveloperPage() {
       <section className="space-y-3">
         <p className="font-mono text-xs uppercase tracking-widest text-zinc-400">MCP Auth</p>
         <h2 className="text-xl font-semibold tracking-tight text-zinc-900">PAT Token</h2>
-        <div className="flex items-center gap-3 rounded border border-zinc-200 bg-zinc-50 px-4 py-3">
-          <code className="flex-1 font-mono text-sm text-zinc-700">{maskedToken}</code>
-          <span className="font-mono text-xs text-zinc-400">MCP_TOKEN</span>
-        </div>
-        <p className="font-mono text-xs text-zinc-400">
-          Set as Bearer token in Claude Desktop / Claude.ai connector config.
-        </p>
+        <PATTokenCard masked={masked} rotateAction={rotateToken} />
       </section>
 
       {/* MCP Servers */}
