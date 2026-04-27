@@ -5,7 +5,7 @@ import {
   DocSlug,
 } from "../lib/website-docs";
 
-const SEED: Record<DocSlug, Array<{ heading: string; content: string }>> = {
+const SEED: Partial<Record<DocSlug, Array<{ heading: string; content: string }>>> = {
   INSTRUCTIONS: [
     {
       heading: "Preamble",
@@ -71,7 +71,7 @@ async function seed() {
       );
       continue;
     }
-    for (const { heading, content } of SEED[slug]) {
+    for (const { heading, content } of SEED[slug] ?? []) {
       const res = await createSection(slug, heading, content);
       console.log(`${slug}: created ${heading} →`, res);
     }

@@ -6,7 +6,10 @@ export type DocSlug =
   | "CONTEXT"
   | "INSTRUCTIONS"
   | "MYSTORY"
-  | "INBOX";
+  | "INBOX"
+  | "BRAND"
+  | "LOGS"
+  | "LEARNINGS";
 export const VALID_SLUGS: DocSlug[] = [
   "IDEAS",
   "BUILD",
@@ -14,6 +17,9 @@ export const VALID_SLUGS: DocSlug[] = [
   "INSTRUCTIONS",
   "MYSTORY",
   "INBOX",
+  "BRAND",
+  "LOGS",
+  "LEARNINGS",
 ];
 
 type SectionRow = {
