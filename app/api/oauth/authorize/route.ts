@@ -93,5 +93,5 @@ export async function POST(req: NextRequest) {
   const redirect = new URL(redirect_uri);
   redirect.searchParams.set("code", code);
   if (state) redirect.searchParams.set("state", state);
-  return NextResponse.redirect(redirect.toString());
+  return NextResponse.redirect(redirect.toString(), { status: 303 });
 }
