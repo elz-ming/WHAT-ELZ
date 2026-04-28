@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { supabaseAdmin } from '@/lib/supabase-server';
+import { listResumes } from '@/lib/supabase-jobs';
 import { ResumeEditor } from './_components/ResumeEditor';
 
 export const metadata: Metadata = { title: 'Resume — whatelz.ai admin' };
 
-async function getResume() {
+async function getCanonicalResume() {
   const { data } = await supabaseAdmin
     .from('system_config')
     .select('value, updated_at')
@@ -22,7 +23,10 @@ async function saveResume(content: string) {
 }
 
 export default async function AdminResumePage() {
-  const { content, updatedAt } = await getResume();
+  const [{ content, updatedAt }, resumes] = await Promise.all([
+    getCanonicalResume(),
+    listResumes(),
+  ]);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -37,6 +41,7 @@ export default async function AdminResumePage() {
       <ResumeEditor
         initialContent={content}
         updatedAt={updatedAt}
+        initialResumes={resumes}
         onSave={saveResume}
       />
     </div>
