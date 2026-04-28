@@ -12,6 +12,7 @@ import {
   updateMediaAsset,
 } from "@/lib/media";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { listResumeVersions, getResumeVersion, upsertResumeVersion } from "@/lib/resume-versions";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -81,6 +82,14 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
     if (error) throw error;
     return { ok: true };
   },
+
+  // ── Resume versions ───────────────────────────────────────────────────────
+  list_resume_versions: () => listResumeVersions(),
+
+  get_resume_version: (a) => getResumeVersion(a.variant as string),
+
+  update_resume_version: (a) =>
+    upsertResumeVersion(a.variant as string, a.content as string),
 };
 
 const TOOL_SCHEMAS = [
@@ -211,6 +220,42 @@ const TOOL_SCHEMAS = [
       required: ["content"],
       properties: {
         content: { type: "string", description: "Full resume in markdown format." },
+      },
+    },
+  },
+  // ── Resume versions ────────────────────────────────────────────────────────
+  {
+    name: "list_resume_versions",
+    description: "List all named resume variants (AI Engineer, Blockchain Engineer, Software Engineer) with their content, pdf_url, and timestamps.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_resume_version",
+    description: "Read the markdown content for a specific resume variant.",
+    inputSchema: {
+      type: "object",
+      required: ["variant"],
+      properties: {
+        variant: {
+          type: "string",
+          enum: ["AI Engineer", "Blockchain Engineer", "Software Engineer"],
+          description: "The named resume variant to read.",
+        },
+      },
+    },
+  },
+  {
+    name: "update_resume_version",
+    description: "Write or replace the markdown content for a specific resume variant. Call get_resume_version first, edit, then write back the full content.",
+    inputSchema: {
+      type: "object",
+      required: ["variant", "content"],
+      properties: {
+        variant: {
+          type: "string",
+          enum: ["AI Engineer", "Blockchain Engineer", "Software Engineer"],
+        },
+        content: { type: "string", description: "Full resume variant in markdown format." },
       },
     },
   },
