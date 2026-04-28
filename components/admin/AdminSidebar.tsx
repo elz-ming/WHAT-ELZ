@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 
 const NAV = [
   { href: '/admin',           label: 'Dashboard' },
+  { href: '/admin/resume',    label: 'Resume'    },
   { href: '/admin/apply',     label: 'Apply'     },
   { href: '/admin/hunt',      label: 'Hunt'      },
   { href: '/admin/listen',    label: 'Listen'    },
   { href: '/admin/media',     label: 'Media'     },
   { href: '/admin/presence',  label: 'Presence'  },
   { href: '/admin/blog',      label: 'Blog'      },
-  { href: '/admin/resume',    label: 'Resume'    },
   { href: '/admin/developer', label: 'Developer' },
 ] as const;
 
