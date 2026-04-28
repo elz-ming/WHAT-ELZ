@@ -12,7 +12,7 @@ import {
   updateMediaAsset,
 } from "@/lib/media";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { listResumeVersions, getResumeVersion, upsertResumeVersion } from "@/lib/resume-versions";
+import { listResumeVersions, getResumeVersion, upsertResumeVersion, patchResumeSection, appendResumeSection } from "@/lib/resume-versions";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -90,6 +90,17 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
 
   update_resume_version: (a) =>
     upsertResumeVersion(a.variant as string, a.content as string),
+
+  patch_resume_section: (a) =>
+    patchResumeSection(a.variant as string, a.section as string, a.content as string),
+
+  append_resume_section: (a) =>
+    appendResumeSection(
+      a.variant as string,
+      a.heading as string,
+      a.content as string,
+      (a.level as number | undefined) ?? 2,
+    ),
 };
 
 const TOOL_SCHEMAS = [
@@ -249,6 +260,33 @@ const TOOL_SCHEMAS = [
       properties: {
         variant: { type: "string", description: "Variant name. Can be an existing one or a new name to create a new entry." },
         content: { type: "string", description: "Full resume variant in markdown format." },
+      },
+    },
+  },
+  {
+    name: "patch_resume_section",
+    description: "Replace a single named section within a resume variant without touching the rest of the document. The section is identified by its heading text (without # marks). If the section does not exist it will be appended.",
+    inputSchema: {
+      type: "object",
+      required: ["variant", "section", "content"],
+      properties: {
+        variant: { type: "string", description: "Variant name, e.g. 'AI Engineer'." },
+        section: { type: "string", description: "Heading text of the section to replace, e.g. 'Experience' or 'Skills'. Case-insensitive." },
+        content:  { type: "string", description: "New body content for the section (do not include the heading line)." },
+      },
+    },
+  },
+  {
+    name: "append_resume_section",
+    description: "Add a new section to the end of a resume variant.",
+    inputSchema: {
+      type: "object",
+      required: ["variant", "heading", "content"],
+      properties: {
+        variant: { type: "string", description: "Variant name, e.g. 'AI Engineer'." },
+        heading: { type: "string", description: "Heading text for the new section." },
+        content: { type: "string", description: "Body content for the new section." },
+        level:   { type: "integer", minimum: 1, maximum: 3, default: 2, description: "Heading level (1–3). Defaults to 2 (##)." },
       },
     },
   },
