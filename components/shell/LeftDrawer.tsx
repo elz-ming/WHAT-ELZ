@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
 import { useNavRegistry } from '@/lib/shell/nav-registry';
 
@@ -21,6 +22,7 @@ const SITE_NAV = [
 export function LeftDrawer() {
   const { state, dispatch } = useDrawerStore();
   const { navItems } = useNavRegistry();
+  const { isSignedIn } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sections, setSections] = useState<Section[]>([]);
@@ -159,6 +161,20 @@ export function LeftDrawer() {
           </ul>
         )}
       </div>
+
+      {isSignedIn && (
+        <div className="shrink-0 border-t border-zinc-200 p-2">
+          <Link
+            href="/admin"
+            onClick={() => dispatch({ type: 'CLOSE_LEFT' })}
+            className={`block rounded px-3 py-2 text-sm font-mono transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
+              pathname.startsWith('/admin') ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-400'
+            }`}
+          >
+            Admin
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }
