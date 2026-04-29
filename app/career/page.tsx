@@ -1,60 +1,81 @@
-'use client';
+import Link from 'next/link';
+import { listCareer } from '@/lib/career';
+import type { CareerEntry } from '@/lib/career';
+import { PageShell } from '@/components/shell/PageShell';
 
-import { useState } from 'react';
-import { arc } from '@/content/arc';
-import { PageShell, ViewToggle } from '@/components/shell/PageShell';
+export const dynamic = 'force-dynamic';
 
-export default function CareerPage() {
-  const [view, setView] = useState<'table' | 'card'>('table');
+function formatDateRange(start: string, end: string | null): string {
+  const startDate = new Date(start).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' });
+  if (!end) return `${startDate} – Present`;
+  const endDate = new Date(end).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' });
+  return `${startDate} – ${endDate}`;
+}
+
+export default async function CareerPage() {
+  const entries = await listCareer(true);
+
+  // Group by slug, keeping order from first occurrence (sorted start_date DESC)
+  const slugOrder: string[] = [];
+  const bySlug = new Map<string, CareerEntry[]>();
+  for (const entry of entries) {
+    if (!bySlug.has(entry.slug)) {
+      slugOrder.push(entry.slug);
+      bySlug.set(entry.slug, []);
+    }
+    bySlug.get(entry.slug)!.push(entry);
+  }
 
   return (
     <PageShell
       title="Career"
-      description="4 years across data science, product management, and AI engineering."
-      actions={<ViewToggle view={view} onChange={setView} />}
+      description="Experience across data science, product management, and AI engineering."
     >
-      {view === 'table' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200">
-                <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400 pr-8">Company</th>
-                <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400 pr-8">Role</th>
-                <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400 pr-8">Period</th>
-                <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400">Shipped</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {arc.map(stop => (
-                <tr key={stop.period} className="hover:bg-zinc-50 transition-colors">
-                  <td className="py-4 pr-8 font-medium text-zinc-900 whitespace-nowrap">{stop.company}</td>
-                  <td className="py-4 pr-8 text-zinc-600 whitespace-nowrap">{stop.role}</td>
-                  <td className="py-4 pr-8 font-mono text-xs text-zinc-500 whitespace-nowrap">{stop.period}</td>
-                  <td className="py-4 text-zinc-600 leading-relaxed">{stop.shipped}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-zinc-200">
+              <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400 pr-8">Company</th>
+              <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400 pr-8">Role</th>
+              <th className="pb-3 text-left font-mono text-[10px] uppercase tracking-widest text-zinc-400">Period</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {slugOrder.map(slug => {
+              const roles = bySlug.get(slug)!;
+              const latest = roles[0];
+              return (
+                <tr key={slug} className="hover:bg-zinc-50 transition-colors">
+                  <td className="py-4 pr-8 font-medium text-zinc-900 whitespace-nowrap">
+                    <Link href={`/career/${slug}`} className="hover:underline underline-offset-2">
+                      {latest.company}
+                    </Link>
+                  </td>
+                  <td className="py-4 pr-8 text-zinc-600 whitespace-nowrap">
+                    {roles.length > 1 ? (
+                      <span>
+                        {latest.role}
+                        <span className="ml-1.5 font-mono text-[10px] text-zinc-400">+{roles.length - 1} more</span>
+                      </span>
+                    ) : (
+                      latest.role
+                    )}
+                  </td>
+                  <td className="py-4 font-mono text-xs text-zinc-500 whitespace-nowrap">
+                    {formatDateRange(latest.start_date, latest.end_date)}
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {arc.map((stop, i) => (
-            <div key={stop.period} className="border border-zinc-200 rounded p-5 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">{stop.period}</p>
-                  <p className="mt-1 font-semibold text-zinc-900">{stop.company}</p>
-                  <p className="text-sm text-zinc-500">{stop.role}</p>
-                </div>
-                <span className="font-mono text-[10px] tracking-widest shrink-0" style={{ color: 'var(--accent-text)' }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-              </div>
-              <p className="text-sm leading-relaxed text-zinc-700">{stop.shipped}</p>
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </tbody>
+        </table>
+
+        {entries.length === 0 && (
+          <p className="py-12 text-center font-mono text-xs uppercase tracking-widest text-zinc-300">
+            No entries yet.
+          </p>
+        )}
+      </div>
     </PageShell>
   );
 }

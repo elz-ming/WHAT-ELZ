@@ -79,6 +79,10 @@ export function HackathonForm({ hackathon, onSave, onDelete }: Props) {
           <label className={labelCls}>Name *</label>
           <input name="name" required defaultValue={hackathon?.name} className={inputCls} />
         </div>
+        <div className="col-span-2 space-y-1.5">
+          <label className={labelCls}>Slug</label>
+          <input name="slug" defaultValue={hackathon?.slug ?? ''} placeholder="e.g. hackomania-2026" className={inputCls} />
+        </div>
         <div className="space-y-1.5">
           <label className={labelCls}>Date *</label>
           <input name="date" type="date" required defaultValue={hackathon?.date} className={inputCls} />

@@ -65,10 +65,12 @@ export function HackathonList({ hackathons, highlight }: { hackathons: Hackathon
       const el = document.querySelector<HTMLElement>(`[data-hackathon-id="${highlight}"]`);
       if (!el) return;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => blinkRow(el, () => router.push(`/hackathons/${highlight}`)), 400);
+      const target = hackathons.find(h => h.id === highlight);
+      const dest = target?.slug ? `/hackathons/${target.slug}` : `/hackathons`;
+      setTimeout(() => blinkRow(el, () => router.push(dest)), 400);
     }, 350);
     return () => clearTimeout(t);
-  }, [highlight, router]);
+  }, [highlight, router, hackathons]);
 
   function cycleDate() {
     setDateSort(d => d === 'none' ? 'desc' : d === 'desc' ? 'asc' : 'none');
@@ -142,7 +144,7 @@ export function HackathonList({ hackathons, highlight }: { hackathons: Hackathon
                 <tr
                   key={h.id}
                   data-hackathon-id={h.id}
-                  onClick={() => router.push(`/hackathons/${h.id}`)}
+                  onClick={() => router.push(`/hackathons/${h.slug}`)}
                   className="cursor-pointer hover:bg-zinc-50 transition-colors"
                 >
                   <td className="py-4 pr-6">
@@ -176,7 +178,7 @@ export function HackathonList({ hackathons, highlight }: { hackathons: Hackathon
             <button
               key={h.id}
               data-hackathon-id={h.id}
-              onClick={() => router.push(`/hackathons/${h.id}`)}
+              onClick={() => router.push(`/hackathons/${h.slug}`)}
               className="text-left border border-zinc-200 rounded p-5 hover:border-zinc-400 transition-colors space-y-3"
             >
               <div>

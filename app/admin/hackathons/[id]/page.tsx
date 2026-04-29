@@ -22,6 +22,7 @@ async function save(id: string | null, fd: FormData) {
   await upsertHackathon(
     {
       name:          fd.get('name') as string,
+      slug:          (fd.get('slug') as string) || undefined,
       organizer:     (fd.get('organizer') as string) || undefined,
       date:          fd.get('date') as string,
       location:      (fd.get('location') as string) || undefined,

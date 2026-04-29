@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import { getHackathon } from '@/lib/hackathons';
+import { getHackathonBySlug } from '@/lib/hackathons';
+import { supabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const h = await getHackathon(id);
+  const { slug } = await params;
+  const h = await getHackathonBySlug(slug);
   if (!h) return {};
   return { title: `${h.name} — Edmund Lin Zhenming` };
 }
@@ -25,11 +26,20 @@ function youtubeEmbedUrl(url: string) {
 }
 
 export default async function HackathonDetailPage({ params }: Props) {
-  const { id } = await params;
-  const h = await getHackathon(id);
+  const { slug } = await params;
+  const h = await getHackathonBySlug(slug);
   if (!h || !h.published) notFound();
 
   const embedUrl = h.demo_url && isYouTube(h.demo_url) ? youtubeEmbedUrl(h.demo_url) : null;
+
+  // Related blog posts
+  const { data: posts } = await supabaseAdmin
+    .from('blog_posts')
+    .select('slug, title, summary, published_at')
+    .contains('tags', [slug])
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(3);
 
   return (
     <section className="px-6 py-24 sm:px-8 sm:py-32">
@@ -123,6 +133,32 @@ export default async function HackathonDetailPage({ params }: Props) {
         {h.writeup.trim() && (
           <div className="mt-12 prose prose-zinc prose-sm max-w-none">
             <ReactMarkdown>{h.writeup}</ReactMarkdown>
+          </div>
+        )}
+
+        {/* Related posts */}
+        {posts && posts.length > 0 && (
+          <div className="mt-16 border-t border-zinc-100 pt-10">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-4">Related Posts</p>
+            <div className="space-y-4">
+              {posts.map(post => (
+                <Link
+                  key={post.slug}
+                  href={`/blog/${post.slug}`}
+                  className="block border border-zinc-200 rounded p-4 hover:border-zinc-400 transition-colors space-y-1"
+                >
+                  <p className="font-medium text-zinc-900 leading-snug">{post.title}</p>
+                  {post.summary && (
+                    <p className="text-sm text-zinc-500 leading-relaxed">{post.summary}</p>
+                  )}
+                  {post.published_at && (
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+                      {new Date(post.published_at as string).toLocaleDateString('en-SG', { month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>
