@@ -22,7 +22,7 @@ export function AppHeader({ isAdmin: _isAdmin }: Props) {
     >
       {/* Left: hamburger */}
       <button
-        onClick={() => dispatch({ type: 'TOGGLE_LEFT' })}
+        onClick={() => dispatch({ type: 'TOGGLE_LEFT', mobile: !isDesktop })}
         aria-label="Toggle menu"
         className="flex h-9 w-9 items-center justify-center rounded text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
       >
@@ -41,7 +41,7 @@ export function AppHeader({ isAdmin: _isAdmin }: Props) {
 
       {/* Right: chat icon */}
       <button
-        onClick={() => dispatch({ type: 'TOGGLE_RIGHT' })}
+        onClick={() => dispatch({ type: 'TOGGLE_RIGHT', mobile: !isDesktop })}
         aria-label="Toggle chat"
         className="flex h-9 w-9 items-center justify-center rounded text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
       >
