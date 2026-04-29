@@ -15,6 +15,8 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { listResumeVersions, getResumeVersion, upsertResumeVersion, patchResumeSection, appendResumeSection } from "@/lib/resume-versions";
 import { listHackathons, getHackathon, upsertHackathon, deleteHackathon } from "@/lib/hackathons";
 import type { HackathonAward } from "@/lib/hackathons";
+import { listCareer, getCareerBySlug, upsertCareer, deleteCareer } from "@/lib/career";
+import type { CareerEntry } from "@/lib/career";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -109,10 +111,17 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
 
   get_hackathon: (a) => getHackathon(a.id as string),
 
-  create_hackathon: (a) =>
-    upsertHackathon({
+  create_hackathon: async (a) => {
+    const slug = a.slug as string | undefined;
+    if (slug) {
+      const { data: existing } = await supabaseAdmin
+        .from('hackathons').select('id').eq('slug', slug).maybeSingle();
+      if (existing) return { error: 'slug_conflict', existing_id: existing.id };
+    }
+    return upsertHackathon({
       name:          a.name          as string,
       date:          a.date          as string,
+      slug:          slug,
       organizer:     a.organizer     as string | undefined,
       location:      a.location      as string | undefined,
       awards:        (a.awards       as HackathonAward[]) ?? [],
@@ -124,7 +133,8 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
       team:          (a.team         as string[]) ?? [],
       tier:          (a.tier         as 'coding' | 'non-coding') ?? 'coding',
       project_name:  a.project_name  as string | undefined,
-    }),
+    });
+  },
 
   update_hackathon: (a) =>
     upsertHackathon({
@@ -144,6 +154,38 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
     }, a.id as string),
 
   delete_hackathon: (a) => deleteHackathon(a.id as string),
+
+  // ── Career ────────────────────────────────────────────────────────────────
+  list_career: () => listCareer(false),
+
+  get_career_by_slug: (a) => getCareerBySlug(a.slug as string),
+
+  create_career: (a) =>
+    upsertCareer({
+      slug:        a.slug        as string,
+      company:     a.company     as string,
+      role:        a.role        as string,
+      start_date:  a.start_date  as string,
+      end_date:    (a.end_date   as string | undefined) ?? null,
+      description: (a.description as string | undefined) ?? null,
+      tags:        (a.tags       as string[]) ?? [],
+      published:   (a.published  as boolean) ?? false,
+    }),
+
+  update_career: (a) =>
+    upsertCareer({
+      id:          a.id          as string,
+      slug:        a.slug        as string,
+      company:     a.company     as string,
+      role:        a.role        as string,
+      start_date:  a.start_date  as string,
+      end_date:    (a.end_date   as string | undefined) ?? null,
+      description: (a.description as string | undefined) ?? null,
+      tags:        (a.tags       as string[]) ?? [],
+      published:   (a.published  as boolean) ?? false,
+    } as Omit<CareerEntry, 'created_at' | 'updated_at'>),
+
+  delete_career: (a) => deleteCareer(a.id as string),
 };
 
 const TOOL_SCHEMAS = [
@@ -352,9 +394,10 @@ const TOOL_SCHEMAS = [
     description: "Create a new hackathon entry. Awards is an array of objects with title and optional track.",
     inputSchema: {
       type: "object",
-      required: ["name", "date"],
+      required: ["name", "date", "slug"],
       properties: {
         name:          { type: "string" },
+        slug:          { type: "string", description: "URL-safe identifier, e.g. 'hackomania-2026'. Must be unique." },
         date:          { type: "string", description: "ISO date string, e.g. '2024-03-15'." },
         organizer:     { type: "string" },
         location:      { type: "string" },
@@ -418,6 +461,65 @@ const TOOL_SCHEMAS = [
   {
     name: "delete_hackathon",
     description: "Permanently delete a hackathon entry by id.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string" } },
+    },
+  },
+  // ── Career ─────────────────────────────────────────────────────────────────
+  {
+    name: "list_career",
+    description: "List all career entries (including unpublished). Returns id, slug, company, role, start_date, end_date, description, tags, published.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_career_by_slug",
+    description: "Get all published career entries for a given slug (e.g. 'prudential' returns both internships).",
+    inputSchema: {
+      type: "object", required: ["slug"],
+      properties: { slug: { type: "string", description: "Company slug, e.g. 'prudential', 'asiaverify', 'setel'." } },
+    },
+  },
+  {
+    name: "create_career",
+    description: "Create a new career entry. Use the same slug for multiple roles at the same company.",
+    inputSchema: {
+      type: "object",
+      required: ["slug", "company", "role", "start_date"],
+      properties: {
+        slug:        { type: "string", description: "Company slug, e.g. 'prudential'. Multiple roles at same company share a slug." },
+        company:     { type: "string" },
+        role:        { type: "string" },
+        start_date:  { type: "string", description: "ISO date, e.g. '2025-05-01'." },
+        end_date:    { type: "string", description: "ISO date. Omit if current role." },
+        description: { type: "string", description: "Markdown bullet points of responsibilities." },
+        tags:        { type: "array", items: { type: "string" }, description: "e.g. ['ai','internship']" },
+        published:   { type: "boolean", default: false },
+      },
+    },
+  },
+  {
+    name: "update_career",
+    description: "Update an existing career entry. All fields are replaced — call list_career or get_career_by_slug first and carry over unchanged fields.",
+    inputSchema: {
+      type: "object",
+      required: ["id", "slug", "company", "role", "start_date"],
+      properties: {
+        id:          { type: "string", description: "UUID of the career entry to update." },
+        slug:        { type: "string" },
+        company:     { type: "string" },
+        role:        { type: "string" },
+        start_date:  { type: "string" },
+        end_date:    { type: "string" },
+        description: { type: "string" },
+        tags:        { type: "array", items: { type: "string" } },
+        published:   { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "delete_career",
+    description: "Permanently delete a career entry by id.",
     inputSchema: {
       type: "object", required: ["id"],
       properties: { id: { type: "string" } },

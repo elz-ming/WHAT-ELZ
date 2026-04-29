@@ -7,6 +7,7 @@ export type HackathonAward = {
 
 export type Hackathon = {
   id: string;
+  slug: string;
   name: string;
   organizer: string | null;
   date: string;
@@ -64,6 +65,16 @@ export async function getHackathon(id: string): Promise<Hackathon | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(`getHackathon: ${error.message}`);
+  return data as Hackathon | null;
+}
+
+export async function getHackathonBySlug(slug: string): Promise<Hackathon | null> {
+  const { data, error } = await supabaseAdmin
+    .from('hackathons')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw new Error(`getHackathonBySlug: ${error.message}`);
   return data as Hackathon | null;
 }
 
