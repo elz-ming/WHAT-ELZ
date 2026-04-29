@@ -40,9 +40,10 @@ function ShellCanvas({ isAdmin, children }: { isAdmin: boolean; children: ReactN
     <>
       <AppHeader isAdmin={isAdmin} />
 
+      {/* Content viewport: fills space below header, shifts with drawers */}
       <div
-        className="pt-14 pb-24"
-        style={{ marginLeft: ml, marginRight: mr, transition: 'margin 200ms' }}
+        className="fixed overflow-y-auto pb-24"
+        style={{ top: 56, bottom: 0, left: ml, right: mr, transition: 'left 200ms, right 200ms' }}
       >
         {children}
       </div>
