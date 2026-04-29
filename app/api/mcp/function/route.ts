@@ -13,6 +13,8 @@ import {
 } from "@/lib/media";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { listResumeVersions, getResumeVersion, upsertResumeVersion, patchResumeSection, appendResumeSection } from "@/lib/resume-versions";
+import { listHackathons, getHackathon, upsertHackathon, deleteHackathon } from "@/lib/hackathons";
+import type { HackathonAward } from "@/lib/hackathons";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -101,6 +103,41 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
       a.content as string,
       (a.level as number | undefined) ?? 2,
     ),
+
+  // ── Hackathons ────────────────────────────────────────────────────────────
+  list_hackathons: () => listHackathons(false),
+
+  get_hackathon: (a) => getHackathon(a.id as string),
+
+  create_hackathon: (a) =>
+    upsertHackathon({
+      name:          a.name          as string,
+      date:          a.date          as string,
+      organizer:     a.organizer     as string | undefined,
+      location:      a.location      as string | undefined,
+      awards:        (a.awards       as HackathonAward[]) ?? [],
+      demo_url:      a.demo_url      as string | undefined,
+      writeup:       (a.writeup      as string) ?? '',
+      tags:          (a.tags         as string[]) ?? [],
+      thumbnail_url: a.thumbnail_url as string | undefined,
+      published:     (a.published    as boolean) ?? false,
+    }),
+
+  update_hackathon: (a) =>
+    upsertHackathon({
+      name:          a.name          as string,
+      date:          a.date          as string,
+      organizer:     a.organizer     as string | undefined,
+      location:      a.location      as string | undefined,
+      awards:        (a.awards       as HackathonAward[]) ?? [],
+      demo_url:      a.demo_url      as string | undefined,
+      writeup:       (a.writeup      as string) ?? '',
+      tags:          (a.tags         as string[]) ?? [],
+      thumbnail_url: a.thumbnail_url as string | undefined,
+      published:     (a.published    as boolean) ?? false,
+    }, a.id as string),
+
+  delete_hackathon: (a) => deleteHackathon(a.id as string),
 };
 
 const TOOL_SCHEMAS = [
@@ -288,6 +325,90 @@ const TOOL_SCHEMAS = [
         content: { type: "string", description: "Body content for the new section." },
         level:   { type: "integer", minimum: 1, maximum: 3, default: 2, description: "Heading level (1–3). Defaults to 2 (##)." },
       },
+    },
+  },
+  // ── Hackathons ─────────────────────────────────────────────────────────────
+  {
+    name: "list_hackathons",
+    description: "List all hackathon entries (including drafts). Returns id, name, date, location, awards, tags, published status.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_hackathon",
+    description: "Get a single hackathon by id, including full writeup.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the hackathon." } },
+    },
+  },
+  {
+    name: "create_hackathon",
+    description: "Create a new hackathon entry. Awards is an array of objects with title and optional track.",
+    inputSchema: {
+      type: "object",
+      required: ["name", "date"],
+      properties: {
+        name:          { type: "string" },
+        date:          { type: "string", description: "ISO date string, e.g. '2024-03-15'." },
+        organizer:     { type: "string" },
+        location:      { type: "string" },
+        awards: {
+          type: "array",
+          description: "Awards won. Multiple allowed. e.g. [{\"title\":\"Champion\",\"track\":\"AI\"},{\"title\":\"Special Award\"}]",
+          items: {
+            type: "object",
+            required: ["title"],
+            properties: {
+              title: { type: "string", description: "e.g. Champion, Second Place, Finalist, Special Award" },
+              track: { type: "string", description: "Optional track or category name." },
+            },
+          },
+        },
+        demo_url:      { type: "string", description: "URL to demo video (YouTube supported) or live project." },
+        writeup:       { type: "string", description: "Markdown writeup about the hackathon." },
+        tags:          { type: "array", items: { type: "string" }, description: "e.g. [\"ai\",\"fintech\"]" },
+        thumbnail_url: { type: "string" },
+        published:     { type: "boolean", default: false },
+      },
+    },
+  },
+  {
+    name: "update_hackathon",
+    description: "Update an existing hackathon entry. All fields are replaced — call get_hackathon first and carry over unchanged fields.",
+    inputSchema: {
+      type: "object",
+      required: ["id", "name", "date"],
+      properties: {
+        id:            { type: "string", description: "UUID of the hackathon to update." },
+        name:          { type: "string" },
+        date:          { type: "string" },
+        organizer:     { type: "string" },
+        location:      { type: "string" },
+        awards: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["title"],
+            properties: {
+              title: { type: "string" },
+              track: { type: "string" },
+            },
+          },
+        },
+        demo_url:      { type: "string" },
+        writeup:       { type: "string" },
+        tags:          { type: "array", items: { type: "string" } },
+        thumbnail_url: { type: "string" },
+        published:     { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "delete_hackathon",
+    description: "Permanently delete a hackathon entry by id.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string" } },
     },
   },
 ];
