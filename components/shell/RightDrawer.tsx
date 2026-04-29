@@ -20,8 +20,8 @@ export function RightDrawer() {
       }`}
       aria-label="Chat"
     >
-      {/* Top spacer matches header */}
-      <div className="h-14 shrink-0 border-b border-zinc-200 flex items-center justify-between px-4">
+      {/* Drawer header — natural height, no fixed spacer */}
+      <div className="shrink-0 border-b border-zinc-200 flex items-center justify-between px-4 py-3">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Ask Edmund</p>
           <p className="font-mono text-[10px] text-zinc-400 mt-0.5">Groq · streaming · 20/hr</p>

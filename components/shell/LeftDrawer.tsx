@@ -93,9 +93,6 @@ export function LeftDrawer() {
       }`}
       aria-label="Navigation"
     >
-      {/* Spacer matching header height */}
-      <div className="h-14 shrink-0 border-b border-zinc-200" />
-
       <div className="flex-1 overflow-y-auto p-4">
         {hasRegisteredNav ? (
           /* Link nav mode (admin) */
