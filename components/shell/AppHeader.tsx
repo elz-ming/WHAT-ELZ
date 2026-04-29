@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
+import { useIsDesktop } from '@/lib/shell/use-is-desktop';
 
 interface Props {
   isAdmin: boolean;
@@ -9,9 +10,10 @@ interface Props {
 
 export function AppHeader({ isAdmin: _isAdmin }: Props) {
   const { state, dispatch } = useDrawerStore();
+  const isDesktop = useIsDesktop();
 
-  const leftOffset = state.left ? 256 : 0;
-  const rightOffset = state.right ? 360 : 0;
+  const leftOffset  = isDesktop && state.left  ? 256 : 0;
+  const rightOffset = isDesktop && state.right ? 360 : 0;
 
   return (
     <header
