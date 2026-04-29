@@ -1,15 +1,11 @@
-import { convertToModelMessages, streamText, stepCountIs, zodSchema, type UIMessage, type Tool } from "ai";
+import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createGroq } from "@ai-sdk/groq";
-import { z } from "zod";
 import {
   buildSystemPrompt,
   isAbusiveInput,
   MAX_INPUT_CHARS,
 } from "@/lib/chat-prompt";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { supabaseAdmin } from "@/lib/supabase-server";
-import { arc } from "@/content/arc";
-import { projects, elzOs } from "@/content/projects";
 
 export const maxDuration = 30;
 
@@ -41,31 +37,6 @@ function lastUserText(messages: UIMessage[]): string {
   return "";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const chatTools: Record<string, Tool<any, any>> = {
-  get_hackathons: {
-    description: "Get all published hackathon entries Edmund has competed in.",
-    inputSchema: zodSchema(z.object({})),
-    execute: async () => {
-      const { data } = await supabaseAdmin
-        .from("hackathons")
-        .select("*")
-        .eq("published", true)
-        .order("date", { ascending: false });
-      return data ?? [];
-    },
-  },
-  get_experience: {
-    description: "Get Edmund's career experience / work history.",
-    inputSchema: zodSchema(z.object({})),
-    execute: async () => arc,
-  },
-  get_projects: {
-    description: "Get Edmund's active projects.",
-    inputSchema: zodSchema(z.object({})),
-    execute: async () => (elzOs ? [...projects, elzOs] : projects),
-  },
-};
 
 export async function POST(req: Request): Promise<Response> {
   const apiKey = process.env.GROQ_API_KEY;
@@ -153,8 +124,6 @@ export async function POST(req: Request): Promise<Response> {
       messages: await convertToModelMessages(messages),
       temperature: 0.4,
       maxOutputTokens: 800,
-      tools: chatTools,
-      stopWhen: stepCountIs(2),
     });
 
     return result.toUIMessageStreamResponse();
