@@ -71,7 +71,7 @@ export function ShellProvider({ isAdmin, children }: Props) {
     <ChatCtxRef.Provider value={{ messages, sendMessage, status, stop, input, setInput }}>
       <NavRegistryProvider>
         <DrawerStoreProvider>
-          <LeftDrawer />
+          <LeftDrawer isAdmin={isAdmin} />
           <RightDrawer />
           <ShellCanvas isAdmin={isAdmin}>{children}</ShellCanvas>
         </DrawerStoreProvider>

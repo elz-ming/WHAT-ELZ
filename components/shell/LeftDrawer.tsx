@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
 import { useNavRegistry } from '@/lib/shell/nav-registry';
 
@@ -19,10 +18,9 @@ const SITE_NAV = [
   { href: '/contact',     label: 'Contact'    },
 ];
 
-export function LeftDrawer() {
+export function LeftDrawer({ isAdmin }: { isAdmin: boolean }) {
   const { state, dispatch } = useDrawerStore();
   const { navItems } = useNavRegistry();
-  const { isSignedIn } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sections, setSections] = useState<Section[]>([]);
@@ -162,7 +160,7 @@ export function LeftDrawer() {
         )}
       </div>
 
-      {isSignedIn && (
+      {isAdmin && (
         <div className="shrink-0 border-t border-zinc-200 p-2">
           <Link
             href="/admin"
