@@ -11,67 +11,193 @@ import {
 import { getResumeVersion, setResumeVersionPdf } from '@/lib/resume-versions';
 import { supabaseAdmin } from '@/lib/supabase-server';
 
-// ── PDF styles ────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
-  page:      { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#171717' },
-  h1:        { fontSize: 20, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  h2:        { fontSize: 13, fontFamily: 'Helvetica-Bold', marginTop: 14, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: '#d4d4d8', paddingBottom: 2 },
-  h3:        { fontSize: 11, fontFamily: 'Helvetica-Bold', marginTop: 8, marginBottom: 2 },
-  p:         { lineHeight: 1.5, marginBottom: 4 },
-  bullet:    { flexDirection: 'row', marginBottom: 2, paddingLeft: 8 },
-  bulletDot: { width: 12, color: '#71717a' },
-  bulletText:{ flex: 1, lineHeight: 1.5 },
-  bold:      { fontFamily: 'Helvetica-Bold' },
-  italic:    { fontFamily: 'Helvetica-Oblique' },
+  page:         { padding: 36, fontFamily: 'Helvetica', fontSize: 9, color: '#171717', lineHeight: 1.45 },
+  // Header
+  headerRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 },
+  name:         { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#171717' },
+  variantLabel: { fontSize: 7.5, fontFamily: 'Helvetica', color: '#71717a', letterSpacing: 0.3 },
+  divider:      { borderBottomWidth: 1, borderBottomColor: '#d4d4d8', marginBottom: 10 },
+  // Body columns
+  body:         { flexDirection: 'row' },
+  leftCol:      { width: '32%', paddingRight: 12 },
+  rightCol:     { width: '68%' },
+  // Section
+  section:      { marginBottom: 10 },
+  sectionHead:  { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#3f3f46', textTransform: 'uppercase', letterSpacing: 0.5, borderBottomWidth: 0.5, borderBottomColor: '#d4d4d8', paddingBottom: 2, marginBottom: 4 },
+  // Role blocks
+  roleTitle:    { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
+  rolePeriod:   { fontSize: 8.5, fontFamily: 'Helvetica-Oblique', color: '#71717a', marginBottom: 3 },
+  // Bullets
+  bullet:       { flexDirection: 'row', marginBottom: 1.5 },
+  bulletDot:    { width: 10, color: '#71717a' },
+  bulletText:   { flex: 1 },
+  // Text
+  p:            { marginBottom: 3 },
+  bold:         { fontFamily: 'Helvetica-Bold' },
+  italic:       { fontFamily: 'Helvetica-Oblique' },
+  skillLine:    { fontSize: 8.5, marginBottom: 2 },
 });
 
-// ── Inline text parser (bold, italic) ────────────────────────────────────────
-function parseInline(line: string): React.ReactNode[] {
+// ── Inline parser (bold / italic) ─────────────────────────────────────────────
+let _key = 0;
+function nextKey() { return _key++; }
+
+function parseInline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
   let last = 0;
   let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = re.exec(line)) !== null) {
-    if (m.index > last) parts.push(React.createElement(Text, { key: key++ }, line.slice(last, m.index)));
-    if (m[2]) parts.push(React.createElement(Text, { key: key++, style: S.bold }, m[2]));
-    else if (m[3]) parts.push(React.createElement(Text, { key: key++, style: S.italic }, m[3]));
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(React.createElement(Text, { key: nextKey() }, text.slice(last, m.index)));
+    if (m[2]) parts.push(React.createElement(Text, { key: nextKey(), style: S.bold }, m[2]));
+    else if (m[3]) parts.push(React.createElement(Text, { key: nextKey(), style: S.italic }, m[3]));
     last = m.index + m[0].length;
   }
-  if (last < line.length) parts.push(React.createElement(Text, { key: key++ }, line.slice(last)));
+  if (last < text.length) parts.push(React.createElement(Text, { key: nextKey() }, text.slice(last)));
   return parts;
 }
 
-// ── Markdown → @react-pdf/renderer elements ──────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function markdownToPdf(markdown: string): React.ReactElement<any> {
-  const lines = markdown.split('\n');
-  const children: React.ReactNode[] = [];
-  let key = 0;
+// ── Section parser ────────────────────────────────────────────────────────────
+type Section = { heading: string; lines: string[] };
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('# '))  { children.push(React.createElement(Text, { key: key++, style: S.h1 }, line.slice(2))); continue; }
-    if (line.startsWith('## ')) { children.push(React.createElement(Text, { key: key++, style: S.h2 }, line.slice(3))); continue; }
-    if (line.startsWith('### ')){ children.push(React.createElement(Text, { key: key++, style: S.h3 }, line.slice(4))); continue; }
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      const text = line.slice(2);
-      children.push(
-        React.createElement(View, { key: key++, style: S.bullet },
-          React.createElement(Text, { style: S.bulletDot }, '•'),
-          React.createElement(Text, { style: S.bulletText }, ...parseInline(text)),
-        )
-      );
+function parseSections(markdown: string): { name: string; sections: Section[] } {
+  const rawLines = markdown.split('\n');
+  let name = '';
+  const sections: Section[] = [];
+  let current: Section | null = null;
+
+  for (const raw of rawLines) {
+    const line = raw.trimEnd();
+    if (line.startsWith('# ')) { name = line.slice(2).trim(); continue; }
+    if (line.startsWith('---')) continue; // strip dividers
+    if (line.startsWith('## ')) {
+      if (current) sections.push(current);
+      current = { heading: line.slice(3).trim(), lines: [] };
       continue;
     }
-    if (line.trim() === '') continue;
-    children.push(React.createElement(Text, { key: key++, style: S.p }, ...parseInline(line)));
+    if (current) {
+      current.lines.push(line);
+    }
   }
+  if (current) sections.push(current);
+  return { name, sections };
+}
+
+// ── Column assignment ─────────────────────────────────────────────────────────
+const LEFT_KEYWORDS = ['skill', 'education', 'certif', 'achievement', 'award', 'language', 'tool', 'tech stack'];
+
+function isLeftColumn(heading: string) {
+  const h = heading.toLowerCase();
+  return LEFT_KEYWORDS.some(kw => h.includes(kw));
+}
+
+// ── Section renderer ──────────────────────────────────────────────────────────
+function renderSection(sec: Section): React.ReactElement {
+  const isSkills = sec.heading.toLowerCase().includes('skill') || sec.heading.toLowerCase().includes('tool') || sec.heading.toLowerCase().includes('tech');
+  const isExperience = sec.heading.toLowerCase().includes('experience') || sec.heading.toLowerCase().includes('project');
+
+  const children: React.ReactNode[] = [
+    React.createElement(Text, { key: nextKey(), style: S.sectionHead }, sec.heading.toUpperCase()),
+  ];
+
+  if (isSkills) {
+    // Collect bullet items and render as comma-separated line
+    const items = sec.lines
+      .filter(l => l.startsWith('- ') || l.startsWith('* '))
+      .map(l => l.slice(2).trim());
+    if (items.length > 0) {
+      children.push(React.createElement(Text, { key: nextKey(), style: S.skillLine }, items.join(', ')));
+    }
+    // Any non-bullet lines as paragraphs
+    sec.lines
+      .filter(l => !l.startsWith('- ') && !l.startsWith('* ') && l.trim())
+      .forEach(l => {
+        children.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(l)));
+      });
+  } else if (isExperience) {
+    // Group lines into role blocks: ### title → italic period → bullets
+    const blocks: React.ReactElement[] = [];
+    let blockChildren: React.ReactNode[] = [];
+    let inBlock = false;
+
+    const flush = () => {
+      if (inBlock && blockChildren.length) {
+        blocks.push(React.createElement(View, { key: nextKey(), wrap: false, style: { marginBottom: 5 } }, ...blockChildren));
+        blockChildren = [];
+      }
+    };
+
+    for (const line of sec.lines) {
+      if (line.startsWith('### ')) {
+        flush();
+        inBlock = true;
+        blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.roleTitle }, line.slice(4).trim()));
+      } else if (line.trim() === '') {
+        // skip blank lines inside blocks
+      } else if (/^\*[^*].*[^*]\*$/.test(line.trim())) {
+        // Italic period line: *Jan 2024 – Mar 2024*
+        const inner = line.trim().slice(1, -1);
+        blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.rolePeriod }, inner));
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        blockChildren.push(
+          React.createElement(View, { key: nextKey(), style: S.bullet },
+            React.createElement(Text, { style: S.bulletDot }, '•'),
+            React.createElement(Text, { style: S.bulletText }, ...parseInline(line.slice(2))),
+          )
+        );
+      } else if (line.trim()) {
+        blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(line)));
+      }
+    }
+    flush();
+    children.push(...blocks);
+  } else {
+    // Generic: bullets + paragraphs
+    for (const line of sec.lines) {
+      if (!line.trim()) continue;
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        children.push(
+          React.createElement(View, { key: nextKey(), style: S.bullet },
+            React.createElement(Text, { style: S.bulletDot }, '•'),
+            React.createElement(Text, { style: S.bulletText }, ...parseInline(line.slice(2))),
+          )
+        );
+      } else {
+        children.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(line)));
+      }
+    }
+  }
+
+  return React.createElement(View, { key: nextKey(), style: S.section }, ...children);
+}
+
+// ── Main builder ──────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function markdownToPdf(markdown: string, variantName: string): React.ReactElement<any> {
+  _key = 0;
+  const { name, sections } = parseSections(markdown);
+
+  const left  = sections.filter(s => isLeftColumn(s.heading)).map(renderSection);
+  const right = sections.filter(s => !isLeftColumn(s.heading)).map(renderSection);
 
   return React.createElement(
     Document,
     null,
-    React.createElement(Page, { size: 'A4', style: S.page }, ...children),
+    React.createElement(Page, { size: 'A4', style: S.page },
+      // Header
+      React.createElement(View, { style: S.headerRow },
+        React.createElement(Text, { style: S.name }, name || variantName),
+        React.createElement(Text, { style: S.variantLabel }, variantName.toUpperCase()),
+      ),
+      React.createElement(View, { style: S.divider }),
+      // Two-column body
+      React.createElement(View, { style: S.body },
+        React.createElement(View, { style: S.leftCol }, ...left),
+        React.createElement(View, { style: S.rightCol }, ...right),
+      ),
+    ),
   );
 }
 
@@ -87,7 +213,7 @@ export async function POST(
   if (!version) return NextResponse.json({ error: 'Variant not found' }, { status: 404 });
   if (!version.content.trim()) return NextResponse.json({ error: 'No content to export' }, { status: 400 });
 
-  const doc = markdownToPdf(version.content);
+  const doc = markdownToPdf(version.content, decoded);
   const buffer = await renderToBuffer(doc);
 
   const slug = decoded.toLowerCase().replace(/\s+/g, '-');
