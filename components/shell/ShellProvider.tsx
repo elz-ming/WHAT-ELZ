@@ -46,7 +46,19 @@ function pulseElement(el: HTMLElement) {
   }, 900);
 }
 
-// ── NavHandler — fires navigate_to tool results after stream finishes ─────────
+// ── Keyword → navigation target ───────────────────────────────────────────────
+
+function detectTarget(text: string): string | null {
+  const t = text.toLowerCase();
+  if (/hackathon|hackomania|pan.?sea|singhack|coding.{0,20}win|win.{0,20}hack/.test(t)) return 'hackathons';
+  if (/internship|career|prudential|setel|asiaverify|work.{0,15}experience|experience.{0,15}work/.test(t)) return 'career';
+  if (/\batlas\b|doublelead|double.?lead|\bproject/.test(t)) return 'projects';
+  if (/contact|email.{0,15}edmund|reach.{0,15}edmund|get.{0,15}touch/.test(t)) return 'contact';
+  if (/youtube|instagram|\bmedium\b|linkedin|channel/.test(t)) return 'channels';
+  return null;
+}
+
+// ── NavHandler — fires after stream finishes ──────────────────────────────────
 
 function NavHandler() {
   const { messages, status } = useChatContext();
@@ -58,46 +70,57 @@ function NavHandler() {
   useEffect(() => {
     if (status !== 'ready') return;
 
-    // Scan all assistant messages for unfired navigate_to results
-    for (const msg of messages) {
-      if (msg.role !== 'assistant') continue;
-      for (const part of msg.parts) {
-        if (
-          part.type !== 'dynamic-tool' ||
-          (part as { toolName?: string }).toolName !== 'navigate_to'
-        ) continue;
+    // Only process the latest assistant message
+    const assistantMsgs = messages.filter(m => m.role === 'assistant');
+    if (assistantMsgs.length === 0) return;
+    const latest = assistantMsgs[assistantMsgs.length - 1];
+    if (firedRef.current.has(latest.id)) return;
 
-        const p = part as { type: 'dynamic-tool'; toolName: string; toolCallId: string; state: string; output?: unknown };
-        if (p.state !== 'output-available') continue;
-        if (firedRef.current.has(p.toolCallId)) continue;
+    let target: string | null = null;
 
-        const result = p.output as { action: string; target: string } | undefined;
-        if (!result || result.action !== 'navigate') continue;
-
-        const dest = navigationMap[result.target];
-        if (!dest) continue;
-
-        firedRef.current.add(p.toolCallId);
-
-        const doNavigate = () => {
-          if (pathname === '/') {
-            const el = document.getElementById(dest.scrollId);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              setTimeout(() => pulseElement(el), 400);
-            }
-          } else {
-            router.push(dest.route);
-          }
-        };
-
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-          dispatch({ type: 'CLOSE_RIGHT' });
-          setTimeout(doNavigate, 220);
-        } else {
-          doNavigate();
-        }
+    // 1. Prefer explicit navigate_to tool result
+    for (const part of latest.parts) {
+      if (part.type !== 'dynamic-tool') continue;
+      const p = part as { toolName: string; toolCallId: string; state: string; output?: unknown };
+      if (p.toolName !== 'navigate_to' || p.state !== 'output-available') continue;
+      const result = p.output as { action: string; target: string } | undefined;
+      if (result?.action === 'navigate' && navigationMap[result.target]) {
+        target = result.target;
+        break;
       }
+    }
+
+    // 2. Fallback: keyword detection on the response text
+    if (!target) {
+      const text = latest.parts
+        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map(p => p.text)
+        .join(' ');
+      target = detectTarget(text);
+    }
+
+    if (!target) return;
+
+    firedRef.current.add(latest.id);
+
+    const dest = navigationMap[target];
+    const doNavigate = () => {
+      if (pathname === '/') {
+        const el = document.getElementById(dest.scrollId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => pulseElement(el), 400);
+        }
+      } else {
+        router.push(dest.route);
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      dispatch({ type: 'CLOSE_RIGHT' });
+      setTimeout(doNavigate, 220);
+    } else {
+      doNavigate();
     }
   }, [status, messages, dispatch, router, pathname]);
 
