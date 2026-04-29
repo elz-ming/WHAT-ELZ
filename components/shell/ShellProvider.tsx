@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { DrawerStoreProvider, useDrawerStore } from '@/lib/shell/drawer-store';
+import { NavRegistryProvider } from '@/lib/shell/nav-registry';
 import { AppHeader } from './AppHeader';
 import { LeftDrawer } from './LeftDrawer';
 import { RightDrawer } from './RightDrawer';
@@ -65,11 +66,13 @@ export function ShellProvider({ isAdmin, children }: Props) {
 
   return (
     <ChatCtxRef.Provider value={{ messages, sendMessage, status, stop, input, setInput }}>
-      <DrawerStoreProvider>
-        <LeftDrawer />
-        <RightDrawer />
-        <ShellCanvas isAdmin={isAdmin}>{children}</ShellCanvas>
-      </DrawerStoreProvider>
+      <NavRegistryProvider>
+        <DrawerStoreProvider>
+          <LeftDrawer />
+          <RightDrawer />
+          <ShellCanvas isAdmin={isAdmin}>{children}</ShellCanvas>
+        </DrawerStoreProvider>
+      </NavRegistryProvider>
     </ChatCtxRef.Provider>
   );
 }

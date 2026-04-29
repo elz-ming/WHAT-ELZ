@@ -4,6 +4,7 @@ export function Hero() {
   return (
     <section
       id="top"
+      data-section="Hero"
       className="border-b border-zinc-200 px-6 py-24 sm:px-8 sm:py-32"
     >
       <div className="mx-auto max-w-4xl">

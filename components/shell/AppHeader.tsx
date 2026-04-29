@@ -1,22 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
-import { ModuleSelector } from './ModuleSelector';
-import { pillForPath, PILLS } from '@/lib/pill-access';
 
 interface Props {
   isAdmin: boolean;
 }
 
-export function AppHeader({ isAdmin }: Props) {
+export function AppHeader({ isAdmin: _isAdmin }: Props) {
   const { state, dispatch } = useDrawerStore();
-  const pathname = usePathname();
-  const active = pillForPath(pathname);
-  const activePill = PILLS.find(p => p.key === active);
-  const [selectorOpen, setSelectorOpen] = useState(false);
 
   const leftOffset = state.left ? 256 : 0;
   const rightOffset = state.right ? 360 : 0;
@@ -37,35 +29,13 @@ export function AppHeader({ isAdmin }: Props) {
         </svg>
       </button>
 
-      {/* Center: active module + chevron */}
-      <div className="relative">
-        <button
-          onClick={() => setSelectorOpen(v => !v)}
-          className="flex items-center gap-1.5 rounded px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-100"
-          aria-haspopup="menu"
-          aria-expanded={selectorOpen}
-        >
-          <Link
-            href="/"
-            onClick={e => e.stopPropagation()}
-            className="font-mono text-xs font-semibold uppercase tracking-widest text-zinc-900"
-          >
-            whatelz.ai
-          </Link>
-          <span className="text-zinc-300 select-none">·</span>
-          <span>{activePill?.label ?? 'Home'}</span>
-          <svg
-            width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden
-            className={`transition-transform ${selectorOpen ? 'rotate-180' : ''}`}
-          >
-            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {selectorOpen && (
-          <ModuleSelector isAdmin={isAdmin} onClose={() => setSelectorOpen(false)} />
-        )}
-      </div>
+      {/* Center: wordmark */}
+      <Link
+        href="/"
+        className="font-mono text-xs font-semibold uppercase tracking-widest text-zinc-900 hover:opacity-70 transition-opacity"
+      >
+        WHATELZ.AI
+      </Link>
 
       {/* Right: chat icon */}
       <button

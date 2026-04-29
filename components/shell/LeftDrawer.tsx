@@ -1,21 +1,31 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
+import { useNavRegistry } from '@/lib/shell/nav-registry';
 
 type Section = { id: string; label: string };
 
 export function LeftDrawer() {
   const { state, dispatch } = useDrawerStore();
+  const { navItems } = useNavRegistry();
   const pathname = usePathname();
   const [sections, setSections] = useState<Section[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Re-scan for sections whenever the route changes
+  const hasRegisteredNav = navItems.length > 0;
+
+  // Close on route change (link nav mode)
   useEffect(() => {
-    // Small delay to let the page render
+    if (hasRegisteredNav) dispatch({ type: 'CLOSE_LEFT' });
+  }, [pathname, hasRegisteredNav, dispatch]);
+
+  // Re-scan DOM for data-section when route changes (scroll-spy mode)
+  useEffect(() => {
+    if (hasRegisteredNav) return;
     const timer = setTimeout(() => {
       const els = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
       setSections(
@@ -25,10 +35,11 @@ export function LeftDrawer() {
       );
     }, 100);
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, hasRegisteredNav]);
 
   // Scroll-spy via IntersectionObserver
   useEffect(() => {
+    if (hasRegisteredNav) return;
     observerRef.current?.disconnect();
 
     if (sections.length === 0) {
@@ -36,13 +47,11 @@ export function LeftDrawer() {
       return;
     }
 
-    // Track intersection ratios to find the most visible section
     const ratios = new Map<string, number>();
 
     observerRef.current = new IntersectionObserver(
       entries => {
         entries.forEach(e => ratios.set(e.target.id, e.intersectionRatio));
-        // Pick section with highest ratio; on tie prefer topmost (first in DOM)
         let best = '';
         let bestRatio = 0;
         sections.forEach(s => {
@@ -60,7 +69,7 @@ export function LeftDrawer() {
     });
 
     return () => observerRef.current?.disconnect();
-  }, [sections]);
+  }, [sections, hasRegisteredNav]);
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -71,26 +80,43 @@ export function LeftDrawer() {
       className={`fixed top-0 left-0 z-30 flex h-screen w-64 flex-col border-r border-zinc-200 bg-[var(--background)] transition-transform duration-200 ${
         state.left ? 'translate-x-0' : '-translate-x-full'
       }`}
-      aria-label="Section navigation"
+      aria-label="Navigation"
     >
-      {/* Top spacer matches header height so content starts below it */}
+      {/* Spacer matching header height */}
       <div className="h-14 shrink-0 border-b border-zinc-200" />
 
       <div className="flex-1 overflow-y-auto p-4">
-        {sections.length === 0 ? (
-          <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
-            No sections
-          </p>
-        ) : (
+        {hasRegisteredNav ? (
+          /* Link nav mode (admin) */
+          <ul className="space-y-0.5">
+            {navItems.map(item => {
+              if (item.type !== 'link') return null;
+              const active = item.href === '/admin'
+                ? pathname === '/admin'
+                : pathname.startsWith(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`block w-full rounded px-3 py-2 text-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
+                      active ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-600'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : sections.length > 0 ? (
+          /* Scroll-spy mode (home) */
           <ul className="space-y-0.5">
             {sections.map(s => (
               <li key={s.id}>
                 <button
                   onClick={() => scrollTo(s.id)}
                   className={`w-full text-left rounded px-3 py-2 text-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
-                    activeId === s.id
-                      ? 'bg-zinc-100 font-semibold text-zinc-900'
-                      : 'text-zinc-600'
+                    activeId === s.id ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-600'
                   }`}
                 >
                   {s.label}
@@ -98,6 +124,10 @@ export function LeftDrawer() {
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            No sections
+          </p>
         )}
       </div>
     </aside>

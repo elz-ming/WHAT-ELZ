@@ -1,6 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminNavInjector } from "@/components/admin/AdminNavInjector";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
 
@@ -22,11 +22,9 @@ export default async function AdminLayout({
 
   return (
     <ClerkProvider>
-      <div className="flex h-screen overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+      <AdminNavInjector />
+      <div className="mx-auto max-w-5xl px-6 py-6">
+        {children}
       </div>
     </ClerkProvider>
   );
