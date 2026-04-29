@@ -1,13 +1,16 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, streamText, zodSchema, type UIMessage, type Tool } from "ai";
 import { createGroq } from "@ai-sdk/groq";
+import { z } from "zod";
 import {
   buildSystemPrompt,
   isAbusiveInput,
   MAX_INPUT_CHARS,
 } from "@/lib/chat-prompt";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { supabaseAdmin } from "@/lib/supabase-server";
+import { arc } from "@/content/arc";
+import { projects, elzOs } from "@/content/projects";
 
-export const runtime = "edge";
 export const maxDuration = 30;
 
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
@@ -37,6 +40,42 @@ function lastUserText(messages: UIMessage[]): string {
   }
   return "";
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const chatTools: Record<string, Tool<any, any>> = {
+  get_hackathons: {
+    description: "Get all published hackathon entries Edmund has competed in.",
+    inputSchema: zodSchema(z.object({})),
+    execute: async () => {
+      const { data } = await supabaseAdmin
+        .from("hackathons")
+        .select("*")
+        .eq("published", true)
+        .order("date", { ascending: false });
+      return data ?? [];
+    },
+  },
+  get_experience: {
+    description: "Get Edmund's career experience / work history.",
+    inputSchema: zodSchema(z.object({})),
+    execute: async () => arc,
+  },
+  get_projects: {
+    description: "Get Edmund's active projects.",
+    inputSchema: zodSchema(z.object({})),
+    execute: async () => (elzOs ? [...projects, elzOs] : projects),
+  },
+  navigate_to: {
+    description:
+      "Navigate the visitor to a section or page. Use when the user asks to see or go to a specific section. target must be one of: hackathons, career, projects, contact, channels.",
+    inputSchema: zodSchema(z.object({
+      target: z
+        .enum(["hackathons", "career", "projects", "contact", "channels"])
+        .describe("The destination section or page"),
+    })),
+    execute: async ({ target }: { target: string }) => ({ action: "navigate", target }),
+  },
+};
 
 export async function POST(req: Request): Promise<Response> {
   const apiKey = process.env.GROQ_API_KEY;
@@ -114,7 +153,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // --- Build grounded system prompt + stream ---
   try {
-    const { systemPrompt } = await buildSystemPrompt();
+    const { systemPrompt } = buildSystemPrompt();
     const groq = createGroq({ apiKey });
     const model = process.env.GROQ_MODEL ?? DEFAULT_MODEL;
 
@@ -124,6 +163,7 @@ export async function POST(req: Request): Promise<Response> {
       messages: await convertToModelMessages(messages),
       temperature: 0.4,
       maxOutputTokens: 800,
+      tools: chatTools,
     });
 
     return result.toUIMessageStreamResponse();

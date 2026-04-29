@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
 import { useChatContext } from './ShellProvider';
-import { MAX_INPUT_CHARS } from '@/lib/chat-prompt';
+import { MAX_INPUT_CHARS } from '@/lib/chat-client';
 
 export function BottomInput() {
   const { state, dispatch } = useDrawerStore();

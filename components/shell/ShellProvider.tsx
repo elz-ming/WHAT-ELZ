@@ -1,10 +1,12 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
+import { useRouter, usePathname } from 'next/navigation';
 import { DrawerStoreProvider, useDrawerStore } from '@/lib/shell/drawer-store';
 import { NavRegistryProvider } from '@/lib/shell/nav-registry';
+import { navigationMap } from '@/lib/navigation-map';
 import { AppHeader } from './AppHeader';
 import { LeftDrawer } from './LeftDrawer';
 import { RightDrawer } from './RightDrawer';
@@ -30,6 +32,78 @@ export function useChatContext(): ChatCtx {
   return ctx;
 }
 
+// ── Pulse highlight ───────────────────────────────────────────────────────────
+
+function pulseElement(el: HTMLElement) {
+  const accent = 'rgba(250,204,21,0.7)';
+  el.style.transition = 'box-shadow 300ms ease';
+  el.style.boxShadow = `0 0 0 3px ${accent}`;
+  setTimeout(() => { el.style.boxShadow = '0 0 0 0px transparent'; }, 300);
+  setTimeout(() => { el.style.boxShadow = `0 0 0 3px ${accent}`; }, 600);
+  setTimeout(() => {
+    el.style.boxShadow = '0 0 0 0px transparent';
+    setTimeout(() => { el.style.transition = ''; el.style.boxShadow = ''; }, 310);
+  }, 900);
+}
+
+// ── NavHandler — fires navigate_to tool results after stream finishes ─────────
+
+function NavHandler() {
+  const { messages, status } = useChatContext();
+  const { dispatch } = useDrawerStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const firedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (status !== 'ready') return;
+
+    // Scan all assistant messages for unfired navigate_to results
+    for (const msg of messages) {
+      if (msg.role !== 'assistant') continue;
+      for (const part of msg.parts) {
+        if (
+          part.type !== 'dynamic-tool' ||
+          (part as { toolName?: string }).toolName !== 'navigate_to'
+        ) continue;
+
+        const p = part as { type: 'dynamic-tool'; toolName: string; toolCallId: string; state: string; output?: unknown };
+        if (p.state !== 'output-available') continue;
+        if (firedRef.current.has(p.toolCallId)) continue;
+
+        const result = p.output as { action: string; target: string } | undefined;
+        if (!result || result.action !== 'navigate') continue;
+
+        const dest = navigationMap[result.target];
+        if (!dest) continue;
+
+        firedRef.current.add(p.toolCallId);
+
+        const doNavigate = () => {
+          if (pathname === '/') {
+            const el = document.getElementById(dest.scrollId);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              setTimeout(() => pulseElement(el), 400);
+            }
+          } else {
+            router.push(dest.route);
+          }
+        };
+
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          dispatch({ type: 'CLOSE_RIGHT' });
+          setTimeout(doNavigate, 220);
+        } else {
+          doNavigate();
+        }
+      }
+    }
+  }, [status, messages, dispatch, router, pathname]);
+
+  return null;
+}
+
 // ── ShellCanvas — reads drawer state and shifts the content area ──────────────
 
 function ShellCanvas({ isAdmin, children }: { isAdmin: boolean; children: ReactNode }) {
@@ -51,6 +125,7 @@ function ShellCanvas({ isAdmin, children }: { isAdmin: boolean; children: ReactN
 
       <BottomInput />
       {!isAdmin && <DeviceTracker />}
+      <NavHandler />
     </>
   );
 }

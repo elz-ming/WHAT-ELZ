@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { STARTER_PROMPTS, MAX_INPUT_CHARS } from "@/lib/chat-prompt";
+import { STARTER_PROMPTS, MAX_INPUT_CHARS } from "@/lib/chat-client";
 
 type ApiErrorPayload = {
   error?: string;
