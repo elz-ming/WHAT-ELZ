@@ -48,6 +48,46 @@ export async function lookupHackathonRoute(text: string): Promise<string | null>
   return null;
 }
 
+// ── Specific career entry lookup ──────────────────────────────────────────────
+
+const CAREER_PATTERNS: Array<{ re: RegExp; q: string }> = [
+  { re: /prudential/i,  q: 'prudential'  },
+  { re: /setel/i,       q: 'setel'       },
+  { re: /asiaverify/i,  q: 'asiaverify'  },
+];
+
+export async function lookupCareerRoute(text: string): Promise<string | null> {
+  const t = text.toLowerCase();
+
+  // "current internship / current role / current job" → most recent active entry
+  if (/current.{0,20}(intern|job|role|position|work)|his.{0,10}current/.test(t)) {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('career')
+      .select('slug, end_date')
+      .or(`end_date.is.null,end_date.gte.${today}`)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+    if (data?.slug) return data.slug;
+  }
+
+  // Specific company name
+  for (const { re, q } of CAREER_PATTERNS) {
+    if (!re.test(text)) continue;
+    const { data } = await supabase
+      .from('career')
+      .select('slug')
+      .ilike('company', `%${q}%`)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+    if (data?.slug) return data.slug;
+  }
+
+  return null;
+}
+
 // ── General topic detection ───────────────────────────────────────────────────
 
 export function detectTopic(text: string): string | null {

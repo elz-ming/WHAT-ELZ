@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { DrawerStoreProvider, useDrawerStore } from '@/lib/shell/drawer-store';
 import { NavRegistryProvider } from '@/lib/shell/nav-registry';
 import { useIsDesktop } from '@/lib/shell/use-is-desktop';
-import { type NavStep, buildSteps, detectTopic, lookupHackathonRoute } from '@/lib/shell/nav-intent';
+import { type NavStep, buildSteps, detectTopic, lookupHackathonRoute, lookupCareerRoute } from '@/lib/shell/nav-intent';
 import { navigationMap } from '@/lib/navigation-map';
 import { AppHeader } from './AppHeader';
 import { LeftDrawer } from './LeftDrawer';
@@ -160,6 +160,16 @@ function NavHandler({ startNav }: { startNav: (steps: NavStep[]) => void }) {
         if (steps.length) startNav(steps);
         return;
       }
+
+      const careerSlug = await lookupCareerRoute(text);
+      if (careerSlug) {
+        const dest = navigationMap['career'];
+        if (isMobile) dispatch({ type: 'CLOSE_RIGHT' });
+        const steps = buildSteps({ target: 'career', mode: 'item', slug: careerSlug }, pathname, dest);
+        if (steps.length) startNav(steps);
+        return;
+      }
+
       const topic = detectTopic(text);
       if (topic) {
         const dest = navigationMap[topic];
