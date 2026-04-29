@@ -176,87 +176,64 @@ function blinkRowEl(el: HTMLElement, onDone: () => void) {
   }, 1000);
 }
 
-// ── useNavQueue ───────────────────────────────────────────────────────────────
+// ── processSteps — recursive timer chain, no React state needed ──────────────
 
-function useNavQueue() {
-  const [steps, setSteps] = useState<NavStep[]>([]);
-  const router = useRouter();
-  const pathname = usePathname();
-  const waitRef = useRef<string | null>(null);
-  const processingRef = useRef(false);
+function processSteps(
+  steps: NavStep[],
+  router: ReturnType<typeof useRouter>,
+  onDone: () => void,
+) {
+  if (steps.length === 0) { onDone(); return; }
+  const [head, ...tail] = steps;
+  const next = () => processSteps(tail, router, onDone);
 
-  const startNav = useCallback((s: NavStep[]) => {
-    waitRef.current = null;
-    processingRef.current = false;
-    setSteps(s);
-  }, []);
-
-  // When pathname changes and we were waiting for a route, advance past the push step
-  useEffect(() => {
-    if (!waitRef.current) return;
-    if (pathname === waitRef.current) {
-      waitRef.current = null;
-      setSteps(prev => prev.slice(1));
-    }
-  }, [pathname]);
-
-  // Process the head step whenever steps change
-  useEffect(() => {
-    if (steps.length === 0) {
-      processingRef.current = false;
-      return;
-    }
-
-    // If waiting for a pathname change, don't process yet
-    if (waitRef.current) return;
-
-    // Prevent double-processing in strict mode
-    if (processingRef.current) return;
-    processingRef.current = true;
-
-    const [head, ...tail] = steps;
-    const advance = () => {
-      processingRef.current = false;
-      setSteps(tail);
-    };
-
-    if (head.type === 'push') {
-      waitRef.current = head.route;
-      processingRef.current = false;
+  switch (head.type) {
+    case 'push':
       router.push(head.route);
-      // Don't advance — wait for pathname effect
-    } else if (head.type === 'scroll') {
+      setTimeout(next, 500);
+      break;
+    case 'scroll': {
       const el = document.getElementById(head.id);
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(advance, 800);
-    } else if (head.type === 'blink-heading') {
+      setTimeout(next, 800);
+      break;
+    }
+    case 'blink-heading': {
       const el = document.getElementById(head.id);
       if (el) pulseElement(el);
-      setTimeout(advance, 1000);
-    } else if (head.type === 'blink-row') {
+      setTimeout(next, 1000);
+      break;
+    }
+    case 'blink-row': {
       const el = document.querySelector<HTMLElement>(`[${head.dataAttr}="${head.dataValue}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => {
-          blinkRowEl(el, () => {
-            router.push(head.destRoute);
-            processingRef.current = false;
-            setSteps([]);
-          });
-        }, 400);
+        setTimeout(() => blinkRowEl(el, () => { router.push(head.destRoute); onDone(); }), 400);
       } else {
-        // Element not found — navigate directly
         router.push(head.destRoute);
-        processingRef.current = false;
-        setSteps([]);
+        onDone();
       }
-    } else if (head.type === 'delay') {
-      setTimeout(advance, head.ms);
+      return; // terminal — don't call next
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [steps]);
+    case 'delay':
+      setTimeout(next, head.ms);
+      break;
+  }
+}
 
-  return { isNavigating: steps.length > 0, startNav };
+// ── useNavQueue ───────────────────────────────────────────────────────────────
+
+function useNavQueue() {
+  const [isNavigating, setIsNavigating] = useState(false);
+  const router = useRouter();
+
+  const startNav = useCallback((s: NavStep[]) => {
+    if (s.length === 0) return;
+    setIsNavigating(true);
+    processSteps(s, router, () => setIsNavigating(false));
+  }, [router]);
+
+  return { isNavigating, startNav };
 }
 
 // ── NavHandler — detects tool results and kicks off nav queue ─────────────────
