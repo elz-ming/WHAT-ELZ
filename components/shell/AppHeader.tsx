@@ -12,14 +12,20 @@ interface Props {
 }
 
 export function AppHeader({ isAdmin }: Props) {
-  const { dispatch } = useDrawerStore();
+  const { state, dispatch } = useDrawerStore();
   const pathname = usePathname();
   const active = pillForPath(pathname);
   const activePill = PILLS.find(p => p.key === active);
   const [selectorOpen, setSelectorOpen] = useState(false);
 
+  const leftOffset = state.left ? 256 : 0;
+  const rightOffset = state.right ? 360 : 0;
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200 bg-[var(--background)] px-4">
+    <header
+      className="fixed top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200 bg-[var(--background)] px-4"
+      style={{ left: leftOffset, right: rightOffset, transition: 'left 200ms, right 200ms' }}
+    >
       {/* Left: hamburger */}
       <button
         onClick={() => dispatch({ type: 'TOGGLE_LEFT' })}

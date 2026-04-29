@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
-import { DrawerStoreProvider } from '@/lib/shell/drawer-store';
+import { DrawerStoreProvider, useDrawerStore } from '@/lib/shell/drawer-store';
 import { AppHeader } from './AppHeader';
 import { LeftDrawer } from './LeftDrawer';
 import { RightDrawer } from './RightDrawer';
@@ -28,6 +28,29 @@ export function useChatContext(): ChatCtx {
   return ctx;
 }
 
+// ── ShellCanvas — reads drawer state and shifts the content area ──────────────
+
+function ShellCanvas({ isAdmin, children }: { isAdmin: boolean; children: ReactNode }) {
+  const { state } = useDrawerStore();
+  const ml = state.left ? 256 : 0;
+  const mr = state.right ? 360 : 0;
+
+  return (
+    <>
+      <AppHeader isAdmin={isAdmin} />
+
+      <div
+        className="pt-14 pb-24"
+        style={{ marginLeft: ml, marginRight: mr, transition: 'margin 200ms' }}
+      >
+        {children}
+      </div>
+
+      <BottomInput />
+    </>
+  );
+}
+
 // ── ShellProvider ─────────────────────────────────────────────────────────────
 
 interface Props {
@@ -43,20 +66,9 @@ export function ShellProvider({ isAdmin, children }: Props) {
   return (
     <ChatCtxRef.Provider value={{ messages, sendMessage, status, stop, input, setInput }}>
       <DrawerStoreProvider>
-        {/* Fixed 56px header */}
-        <AppHeader isAdmin={isAdmin} />
-
-        {/* Overlay drawers */}
         <LeftDrawer />
         <RightDrawer />
-
-        {/* Canvas: offset for fixed header + bottom input */}
-        <div className="pt-14 pb-24">
-          {children}
-        </div>
-
-        {/* Fixed bottom input */}
-        <BottomInput />
+        <ShellCanvas isAdmin={isAdmin}>{children}</ShellCanvas>
       </DrawerStoreProvider>
     </ChatCtxRef.Provider>
   );

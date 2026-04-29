@@ -6,7 +6,7 @@ import { useChatContext } from './ShellProvider';
 import { MAX_INPUT_CHARS } from '@/lib/chat-prompt';
 
 export function BottomInput() {
-  const { dispatch } = useDrawerStore();
+  const { state, dispatch } = useDrawerStore();
   const { input, setInput, sendMessage, status, stop } = useChatContext();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,10 +37,18 @@ export function BottomInput() {
     dispatch({ type: 'OPEN_RIGHT' });
   }
 
+  const ml = state.left ? 256 : 0;
+  const mr = state.right ? 360 : 0;
+
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-30"
-      style={{ background: 'linear-gradient(to top, var(--background) 60%, rgba(255,255,255,0))' }}
+      className="fixed bottom-0 z-30"
+      style={{
+        left: ml,
+        right: mr,
+        transition: 'left 200ms, right 200ms',
+        background: 'linear-gradient(to top, var(--background) 60%, rgba(255,255,255,0))',
+      }}
     >
       <div className="mx-auto max-w-2xl px-4 pb-4 pt-6">
         <form

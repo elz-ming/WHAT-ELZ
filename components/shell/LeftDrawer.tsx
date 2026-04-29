@@ -1,86 +1,105 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useDrawerStore } from '@/lib/shell/drawer-store';
-import { pillForPath } from '@/lib/pill-access';
-import { MODULE_NAV } from '@/lib/module-nav';
+
+type Section = { id: string; label: string };
 
 export function LeftDrawer() {
   const { state, dispatch } = useDrawerStore();
   const pathname = usePathname();
-  const active = pillForPath(pathname);
-  const navItems = MODULE_NAV[active] ?? [];
+  const [sections, setSections] = useState<Section[]>([]);
+  const [activeId, setActiveId] = useState<string>('');
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Close on route change
+  // Re-scan for sections whenever the route changes
   useEffect(() => {
-    dispatch({ type: 'CLOSE_LEFT' });
-  }, [pathname, dispatch]);
+    // Small delay to let the page render
+    const timer = setTimeout(() => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
+      setSections(
+        els
+          .filter(el => el.id && el.dataset.section)
+          .map(el => ({ id: el.id, label: el.dataset.section! }))
+      );
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+
+  // Scroll-spy via IntersectionObserver
+  useEffect(() => {
+    observerRef.current?.disconnect();
+
+    if (sections.length === 0) {
+      setActiveId('');
+      return;
+    }
+
+    // Track intersection ratios to find the most visible section
+    const ratios = new Map<string, number>();
+
+    observerRef.current = new IntersectionObserver(
+      entries => {
+        entries.forEach(e => ratios.set(e.target.id, e.intersectionRatio));
+        // Pick section with highest ratio; on tie prefer topmost (first in DOM)
+        let best = '';
+        let bestRatio = 0;
+        sections.forEach(s => {
+          const r = ratios.get(s.id) ?? 0;
+          if (r > bestRatio) { bestRatio = r; best = s.id; }
+        });
+        if (best) setActiveId(best);
+      },
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
+    );
+
+    sections.forEach(s => {
+      const el = document.getElementById(s.id);
+      if (el) observerRef.current!.observe(el);
+    });
+
+    return () => observerRef.current?.disconnect();
+  }, [sections]);
+
+  function scrollTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   return (
-    <>
-      {/* Backdrop */}
-      {state.left && (
-        <div
-          className="fixed inset-0 z-20 bg-black/20"
-          onClick={() => dispatch({ type: 'CLOSE_LEFT' })}
-          aria-hidden
-        />
-      )}
+    <aside
+      className={`fixed top-0 left-0 z-30 flex h-screen w-64 flex-col border-r border-zinc-200 bg-[var(--background)] transition-transform duration-200 ${
+        state.left ? 'translate-x-0' : '-translate-x-full'
+      }`}
+      aria-label="Section navigation"
+    >
+      {/* Top spacer matches header height so content starts below it */}
+      <div className="h-14 shrink-0 border-b border-zinc-200" />
 
-      {/* Drawer */}
-      <aside
-        className={`fixed top-14 left-0 z-30 flex h-[calc(100vh-56px)] w-64 flex-col border-r border-zinc-200 bg-[var(--background)] transition-transform duration-200 ${
-          state.left ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        aria-label="Module navigation"
-      >
-        <div className="flex-1 overflow-y-auto p-4">
-          {navItems.length === 0 ? (
-            <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
-              No sub-pages yet
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {navItems.map(item => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`block rounded px-3 py-2 text-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
-                      pathname === item.href
-                        ? 'bg-zinc-100 font-semibold text-zinc-900'
-                        : 'text-zinc-600'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Settings pin */}
-        <div className="border-t border-zinc-200 p-4">
-          <Link
-            href="/settings"
-            className="flex items-center gap-2 rounded px-3 py-2 text-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-              <path
-                d="M7 9a2 2 0 100-4 2 2 0 000 4z"
-                stroke="currentColor" strokeWidth="1.2"
-              />
-              <path
-                d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06"
-                stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"
-              />
-            </svg>
-            Settings
-          </Link>
-        </div>
-      </aside>
-    </>
+      <div className="flex-1 overflow-y-auto p-4">
+        {sections.length === 0 ? (
+          <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            No sections
+          </p>
+        ) : (
+          <ul className="space-y-0.5">
+            {sections.map(s => (
+              <li key={s.id}>
+                <button
+                  onClick={() => scrollTo(s.id)}
+                  className={`w-full text-left rounded px-3 py-2 text-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
+                    activeId === s.id
+                      ? 'bg-zinc-100 font-semibold text-zinc-900'
+                      : 'text-zinc-600'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
   );
 }
