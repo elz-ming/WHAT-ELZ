@@ -2,7 +2,7 @@ import { ContactForm } from "@/components/sections/contact-form";
 
 export function Contact() {
   return (
-    <section id="contact" data-section="Contact" className="px-6 py-24 sm:px-8 sm:py-32">
+    <section id="contact" data-section="Contact" data-section-href="/contact" className="px-6 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-4xl">
         <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           Contact
