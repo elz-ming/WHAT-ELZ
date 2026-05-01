@@ -1135,7 +1135,7 @@ export async function POST(req: NextRequest) {
       const result = await handler(args ?? {});
       return NextResponse.json({
         jsonrpc: "2.0", id,
-        result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] },
+        result: { content: [{ type: "text", text: JSON.stringify(result ?? { ok: true }, null, 2) }] },
       });
     }
 
