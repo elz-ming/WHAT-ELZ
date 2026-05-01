@@ -292,6 +292,48 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
   },
 
   // ── Applications ──────────────────────────────────────────────────────────
+  create_application: async (a) => {
+    const job_listing_id = a.job_listing_id as string;
+    const { data: listing, error: listingErr } = await supabaseAdmin
+      .from('job_listings')
+      .select('id, company, role')
+      .eq('id', job_listing_id)
+      .single();
+    if (listingErr || !listing) throw new Error(`create_application: job listing not found`);
+
+    const { data: existing } = await supabaseAdmin
+      .from('applications')
+      .select('id, status')
+      .eq('listing_id', job_listing_id)
+      .maybeSingle();
+    if (existing) return { already_exists: true, application: existing };
+
+    const { data: app, error: appErr } = await supabaseAdmin
+      .from('applications')
+      .insert({
+        listing_id: job_listing_id,
+        resume_id:  (a.resume_id as string | undefined) ?? null,
+        status:     'draft',
+      })
+      .select()
+      .single();
+    if (appErr || !app) throw new Error(`create_application: ${appErr?.message ?? 'insert failed'}`);
+
+    await supabaseAdmin.from('application_events').insert({
+      application_id: app.id,
+      event_type:     'created',
+      new_value:      'draft',
+      source:         'user',
+    });
+
+    await supabaseAdmin
+      .from('job_listings')
+      .update({ status: 'applying' })
+      .eq('id', job_listing_id);
+
+    return { created: true, application: app };
+  },
+
   list_applications: () => listApplications(),
 
   get_application: (a) => getApplication(a.id as string),
@@ -881,6 +923,17 @@ const TOOL_SCHEMAS = [
     },
   },
   // ── Applications ───────────────────────────────────────────────────────────
+  {
+    name: "create_application",
+    description: "Create a new draft application for a job listing. Returns the application record. If an application already exists for the listing, returns the existing one. Also flips the listing status to 'applying'.",
+    inputSchema: {
+      type: "object", required: ["job_listing_id"],
+      properties: {
+        job_listing_id: { type: "string", description: "UUID of the job listing to apply for." },
+        resume_id:      { type: "string", description: "Optional UUID of the resume to attach." },
+      },
+    },
+  },
   {
     name: "list_applications",
     description: "List all job applications with linked listing info (company, role, external_url). Sorted by most recently updated.",
