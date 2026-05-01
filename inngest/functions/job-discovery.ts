@@ -2,6 +2,7 @@ import { inngest } from '../client';
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { scrapeCompany } from '@/lib/ats-scraper';
 import { scoreListings } from '@/lib/job-scorer';
+import { shouldReject } from '@/lib/job-filter';
 import type { Company } from '@/lib/types/jobs';
 
 export const jobDiscovery = inngest.createFunction(
@@ -43,18 +44,18 @@ export const jobDiscovery = inngest.createFunction(
         remote_type:  r.remote_type,
         description:  r.description,
         posted_at:    r.posted_at,
-        status:       'new',
+        status:       shouldReject(r.role) ? 'rejected_by_user' : 'new',
         source:       'derived',
       }));
 
       const { data: inserted } = await supabaseAdmin
         .from('job_listings')
         .upsert(toInsert, { onConflict: 'source_id,external_id', ignoreDuplicates: true })
-        .select('id, role, company, description');
+        .select('id, role, company, description, status');
 
-      newListings += (inserted ?? []).length;
+      newListings += (inserted ?? []).filter((r: { status: string }) => r.status === 'new').length;
 
-      const unscored = (inserted ?? []).filter((r: { id: string }) => r.id) as Array<{ id: string; role: string; company: string; description: string | null }>;
+      const unscored = (inserted ?? []).filter((r: { id: string; status: string }) => r.status === 'new') as Array<{ id: string; role: string; company: string; description: string | null }>;
       if (unscored.length > 0) {
         const scores = await scoreListings(
           unscored.map(r => ({ id: r.id, role: r.role, company: r.company, description: r.description }))
