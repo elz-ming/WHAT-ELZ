@@ -27,6 +27,7 @@ import {
 } from "@/lib/supabase-jobs";
 import type { ApplicationStatus } from "@/lib/types/jobs";
 import { scoreListings } from "@/lib/job-scorer";
+import { generateCoverLetter, selectResumeVariant } from "@/lib/cover-letter";
 
 type ToolArgs = Record<string, unknown>;
 
@@ -352,6 +353,62 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
   get_memory_context: () => listUserProfile(),
 
   list_resumes: () => listResumes(),
+
+  // ── Cover letter ──────────────────────────────────────────────────────────
+  select_resume_for_job: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('job_listings')
+      .select('role, company, description')
+      .eq('id', a.job_id as string)
+      .single();
+    if (error || !data) throw new Error(`select_resume_for_job: job not found`);
+    const jd = `${data.role} at ${data.company}\n${data.description ?? ''}`;
+    const variant = selectResumeVariant(jd);
+    return { recommended_variant: variant, job_role: data.role, company: data.company };
+  },
+
+  draft_cover_letter: async (a) => {
+    const app = await getApplication(a.application_id as string);
+    if (!app) throw new Error(`draft_cover_letter: application not found`);
+    if (!app.listing_id) throw new Error(`draft_cover_letter: application has no linked listing`);
+
+    const { data: listing, error: listingErr } = await supabaseAdmin
+      .from('job_listings')
+      .select('role, company, description')
+      .eq('id', app.listing_id)
+      .single();
+    if (listingErr || !listing) throw new Error(`draft_cover_letter: listing not found`);
+
+    const jd = `${listing.role} at ${listing.company}\n${listing.description ?? ''}`;
+    const variantOverride = (a.resume_variant as string | undefined);
+    const variant = variantOverride ?? selectResumeVariant(jd);
+
+    const resumeVersion = await getResumeVersion(variant);
+    if (!resumeVersion) throw new Error(`draft_cover_letter: resume variant '${variant}' not found`);
+
+    const profile = await listUserProfile();
+    const profileContext = profile.map(p => `${p.category}/${p.key}: ${p.value}`).join('\n');
+
+    const coverLetter = await generateCoverLetter(
+      listing.role,
+      listing.company,
+      listing.description ?? '',
+      resumeVersion.content,
+      profileContext,
+    );
+
+    if (a.save !== false) {
+      await updateApplicationDraft(app.id, { cover_letter: coverLetter });
+    }
+
+    return {
+      application_id: app.id,
+      variant_used:   variant,
+      cover_letter:   coverLetter,
+      word_count:     coverLetter.split(/\s+/).filter(Boolean).length,
+      saved:          a.save !== false,
+    };
+  },
 
   // ── Company / ATS ─────────────────────────────────────────────────────────
   list_companies: async (a) => {
@@ -897,6 +954,29 @@ const TOOL_SCHEMAS = [
     name: "list_resumes",
     description: "List all resume records (structured + raw text) stored in the resumes table. Returns id, label, is_active, created_at.",
     inputSchema: { type: "object", properties: {} },
+  },
+  // ── Cover letter ───────────────────────────────────────────────────────────
+  {
+    name: "select_resume_for_job",
+    description: "Recommend the best resume variant for a job listing based on its description. Returns one of: 'AI Engineer', 'Blockchain Engineer', 'Software Engineer'. Use before draft_cover_letter to confirm the variant.",
+    inputSchema: {
+      type: "object", required: ["job_id"],
+      properties: {
+        job_id: { type: "string", description: "UUID of the job listing." },
+      },
+    },
+  },
+  {
+    name: "draft_cover_letter",
+    description: "Generate a cover letter for a job application using the JD, best-matched resume variant, and candidate profile. Saves the draft to applications.cover_letter by default. Returns the full text and word count.",
+    inputSchema: {
+      type: "object", required: ["application_id"],
+      properties: {
+        application_id: { type: "string", description: "UUID of the application." },
+        resume_variant: { type: "string", description: "Override the auto-selected resume variant. One of: 'AI Engineer', 'Blockchain Engineer', 'Software Engineer'. Omit to auto-select." },
+        save: { type: "boolean", default: true, description: "Set false to preview without saving to the application record." },
+      },
+    },
   },
 ];
 
