@@ -6,6 +6,7 @@ import {
   MAX_INPUT_CHARS,
 } from "@/lib/chat-prompt";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { supabaseAdmin } from "@/lib/supabase-server";
 
 export const maxDuration = 30;
 
@@ -111,6 +112,13 @@ export async function POST(req: Request): Promise<Response> {
       429,
     );
   }
+
+  // Fire-and-forget chat log — don't block the stream
+  const referer = req.headers.get('referer');
+  supabaseAdmin.from('chat_logs').insert({
+    question:  userText.slice(0, 2000),
+    page_url:  referer,
+  }).then(() => {}).catch(() => {});
 
   // --- Build grounded system prompt + stream ---
   try {
