@@ -115,10 +115,12 @@ export async function POST(req: Request): Promise<Response> {
 
   // Fire-and-forget chat log — don't block the stream
   const referer = req.headers.get('referer');
-  supabaseAdmin.from('chat_logs').insert({
-    question:  userText.slice(0, 2000),
-    page_url:  referer,
-  }).then(() => {}).catch(() => {});
+  void Promise.resolve(
+    supabaseAdmin.from('chat_logs').insert({
+      question: userText.slice(0, 2000),
+      page_url: referer,
+    })
+  ).catch(() => {});
 
   // --- Build grounded system prompt + stream ---
   try {
