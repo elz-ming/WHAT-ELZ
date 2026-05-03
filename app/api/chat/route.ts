@@ -124,7 +124,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // --- Build grounded system prompt + stream ---
   try {
-    const { systemPrompt } = buildSystemPrompt();
+    const { systemPrompt } = await buildSystemPrompt();
     const groq = createGroq({ apiKey });
     const model = process.env.GROQ_MODEL ?? DEFAULT_MODEL;
 
