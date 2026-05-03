@@ -105,7 +105,33 @@ export function LeftDrawer({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex-1 overflow-y-auto p-4">
         {mode === 'admin' && (
           <ul className="space-y-0.5">
-            {navItems.map(item => {
+            {navItems.map((item, i) => {
+              if (item.type === 'group') {
+                const groupActive = item.children.some(c => pathname.startsWith(c.href));
+                return (
+                  <li key={item.label}>
+                    <span className={`block px-3 py-2 text-sm font-semibold ${groupActive ? 'text-zinc-900' : 'text-zinc-500'}`}>
+                      {item.label}
+                    </span>
+                    <ul className="space-y-0.5">
+                      {item.children.map(child => {
+                        const active = pathname.startsWith(child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link href={child.href}
+                              className={`block rounded px-3 py-2 pl-6 text-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${
+                                active ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-600'
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
+              }
               if (item.type !== 'link') return null;
               const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
               return (

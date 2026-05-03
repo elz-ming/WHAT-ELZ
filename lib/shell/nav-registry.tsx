@@ -4,7 +4,8 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 
 export type NavItem =
   | { type: 'link'; href: string; label: string }
-  | { type: 'section'; id: string; label: string };
+  | { type: 'section'; id: string; label: string }
+  | { type: 'group'; label: string; children: Array<{ href: string; label: string }> };
 
 type NavCtx = {
   navItems: NavItem[];
