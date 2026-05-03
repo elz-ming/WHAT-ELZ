@@ -7,6 +7,8 @@ const ADMIN_NAV = [
   { type: 'group' as const, label: 'Profile', children: [
     { href: '/admin/resume',     label: 'Resume'     },
     { href: '/admin/hackathons', label: 'Hackathons' },
+    { href: '/admin/career',     label: 'Career'     },
+    { href: '/admin/projects',   label: 'Projects'   },
   ]},
   { type: 'link'  as const, href: '/admin/apply',      label: 'Apply'      },
   { type: 'link'  as const, href: '/admin/hunt',       label: 'Hunt'       },
