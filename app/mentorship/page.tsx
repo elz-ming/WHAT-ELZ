@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { listMentorship } from '@/lib/mentorship';
 import { PageShell } from '@/components/shell/PageShell';
 
@@ -26,7 +27,7 @@ export default async function MentorshipPage() {
       ) : (
         <div className="divide-y divide-zinc-200 rounded border border-zinc-200">
           {entries.map((entry) => (
-            <div key={entry.id} className="px-6 py-5">
+            <Link key={entry.id} href={`/mentorship/${entry.slug}`} className="block px-6 py-5 transition-colors hover:bg-zinc-50">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-1">
                   <p className="text-base font-semibold text-zinc-900">{entry.programme}</p>
@@ -46,7 +47,7 @@ export default async function MentorshipPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

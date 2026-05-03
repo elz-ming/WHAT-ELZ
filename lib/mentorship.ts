@@ -23,6 +23,17 @@ export async function listMentorship(publishedOnly = false): Promise<Mentorship[
   return (data ?? []) as Mentorship[];
 }
 
+export async function getMentorshipBySlug(slug: string): Promise<Mentorship | null> {
+  const { data, error } = await supabaseAdmin
+    .from('mentorship')
+    .select('*')
+    .eq('slug', slug)
+    .eq('published', true)
+    .maybeSingle();
+  if (error) throw new Error(`getMentorshipBySlug: ${error.message}`);
+  return data as Mentorship | null;
+}
+
 export async function getMentorship(id: string): Promise<Mentorship | null> {
   const { data, error } = await supabaseAdmin
     .from('mentorship')

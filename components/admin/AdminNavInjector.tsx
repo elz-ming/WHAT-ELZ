@@ -6,9 +6,11 @@ const ADMIN_NAV = [
   { type: 'link'  as const, href: '/admin',            label: 'Dashboard'  },
   { type: 'group' as const, label: 'Profile', children: [
     { href: '/admin/resume',     label: 'Resume'     },
-    { href: '/admin/hackathons', label: 'Hackathons' },
     { href: '/admin/career',     label: 'Career'     },
+    { href: '/admin/hackathons', label: 'Hackathons' },
     { href: '/admin/projects',   label: 'Projects'   },
+    { href: '/admin/leadership', label: 'Leadership' },
+    { href: '/admin/mentorship', label: 'Mentorship' },
   ]},
   { type: 'link'  as const, href: '/admin/apply',      label: 'Apply'      },
   { type: 'link'  as const, href: '/admin/hunt',       label: 'Hunt'       },

@@ -10,7 +10,7 @@ export default async function MentorshipLayout({ children }: { children: ReactNo
     { type: 'link', href: '/mentorship', label: 'Mentorship' },
     ...entries.map(e => ({
       type: 'link' as const,
-      href: '/mentorship',
+      href: `/mentorship/${e.slug}`,
       label: `${e.programme} — ${e.organiser}`,
     })),
   ];

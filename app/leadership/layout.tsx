@@ -10,7 +10,7 @@ export default async function LeadershipLayout({ children }: { children: ReactNo
     { type: 'link', href: '/leadership', label: 'Leadership' },
     ...entries.map(e => ({
       type: 'link' as const,
-      href: '/leadership',
+      href: `/leadership/${e.slug}`,
       label: `${e.role} — ${e.organisation}`,
     })),
   ];

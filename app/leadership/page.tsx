@@ -27,7 +27,8 @@ export default async function LeadershipPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {entries.map((entry, i) => (
-            <article key={entry.id} className="rounded border border-zinc-200 p-6 space-y-3">
+            <Link key={entry.id} href={`/leadership/${entry.slug}`}>
+            <article className="rounded border border-zinc-200 p-6 space-y-3 transition-colors hover:border-zinc-400">
               <div className="flex items-center gap-3">
                 <span
                   className="font-mono text-[10px] uppercase tracking-widest"
@@ -61,6 +62,7 @@ export default async function LeadershipPage() {
                 </p>
               )}
             </article>
+            </Link>
           ))}
         </div>
       )}

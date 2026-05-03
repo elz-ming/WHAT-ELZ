@@ -24,6 +24,17 @@ export async function listLeadership(publishedOnly = false): Promise<Leadership[
   return (data ?? []) as Leadership[];
 }
 
+export async function getLeadershipBySlug(slug: string): Promise<Leadership | null> {
+  const { data, error } = await supabaseAdmin
+    .from('leadership')
+    .select('*')
+    .eq('slug', slug)
+    .eq('published', true)
+    .maybeSingle();
+  if (error) throw new Error(`getLeadershipBySlug: ${error.message}`);
+  return data as Leadership | null;
+}
+
 export async function getLeadership(id: string): Promise<Leadership | null> {
   const { data, error } = await supabaseAdmin
     .from('leadership')
