@@ -10,8 +10,13 @@ interface Props {
 
 export function ResumeEditor({ initialVersions }: Props) {
   // Versions state — keyed by variant name
-  const [versions, setVersions] = useState<ResumeVersion[]>(initialVersions);
-  const [activeVariant, setActiveVariant] = useState<string>(initialVersions[0]?.variant ?? '');
+  const sorted = [...initialVersions].sort((a, b) => {
+    if (a.variant.toLowerCase() === 'main') return -1;
+    if (b.variant.toLowerCase() === 'main') return 1;
+    return a.variant.localeCompare(b.variant);
+  });
+  const [versions, setVersions] = useState<ResumeVersion[]>(sorted);
+  const [activeVariant, setActiveVariant] = useState<string>(sorted[0]?.variant ?? '');
 
   // Per-variant draft content
   const [drafts, setDrafts] = useState<Record<string, string>>(
