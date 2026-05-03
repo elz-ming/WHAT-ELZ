@@ -18,6 +18,8 @@ import type { HackathonAward } from "@/lib/hackathons";
 import { listCareer, getCareerBySlug, upsertCareer, deleteCareer } from "@/lib/career";
 import type { CareerEntry } from "@/lib/career";
 import { listProjects, getProject, upsertProject, deleteProject } from "@/lib/projects";
+import { listLeadership, getLeadership, upsertLeadership, deleteLeadership } from "@/lib/leadership";
+import { listMentorship, getMentorship, upsertMentorship, deleteMentorship } from "@/lib/mentorship";
 import {
   listApplications,
   getApplication,
@@ -559,6 +561,134 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
     return data;
   },
 
+  // ── Leadership ────────────────────────────────────────────────────────────
+  list_leadership: () => listLeadership(false),
+
+  get_leadership: (a) => getLeadership(a.id as string),
+
+  create_leadership: async (a) => {
+    const slug = a.slug as string;
+    const { data: existing } = await supabaseAdmin
+      .from('leadership').select('id').eq('slug', slug).maybeSingle();
+    if (existing) return { error: 'slug_conflict', existing_id: existing.id };
+    return upsertLeadership({
+      slug,
+      organisation: a.organisation  as string,
+      role:         a.role          as string,
+      start_date:   a.start_date    as string,
+      body:         (a.body         as string | undefined) ?? null,
+      end_date:     (a.end_date     as string | undefined) ?? null,
+      description:  (a.description  as string | undefined) ?? null,
+      tags:         (a.tags         as string[]) ?? [],
+      published:    (a.published    as boolean) ?? false,
+      content:      (a.content      as string | undefined) ?? null,
+    });
+  },
+
+  update_leadership: async (a) => {
+    const id = a.id as string;
+    const existing = await getLeadership(id);
+    if (!existing) return { error: 'not_found', id };
+    return upsertLeadership({
+      slug:         (a.slug         as string  | undefined) ?? existing.slug,
+      organisation: (a.organisation as string  | undefined) ?? existing.organisation,
+      role:         (a.role         as string  | undefined) ?? existing.role,
+      start_date:   (a.start_date   as string  | undefined) ?? existing.start_date,
+      body:         (a.body         as string  | undefined) ?? null,
+      end_date:     (a.end_date     as string  | undefined) ?? null,
+      description:  (a.description  as string  | undefined) ?? null,
+      tags:         (a.tags         as string[]) ?? [],
+      published:    (a.published    as boolean | undefined) ?? existing.published,
+      content:      (a.content      as string  | undefined) ?? existing.content,
+    }, id);
+  },
+
+  delete_leadership: (a) => deleteLeadership(a.id as string),
+
+  get_leadership_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('leadership')
+      .select('id, slug, role, content')
+      .eq('id', a.id as string)
+      .maybeSingle();
+    if (error) throw new Error(`get_leadership_content: ${error.message}`);
+    return data;
+  },
+
+  patch_leadership_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('leadership')
+      .update({ content: a.content as string, updated_at: new Date().toISOString() })
+      .eq('id', a.id as string)
+      .select('id, slug')
+      .single();
+    if (error) throw new Error(`patch_leadership_content: ${error.message}`);
+    return { ...data, updated: true };
+  },
+
+  // ── Mentorship ────────────────────────────────────────────────────────────
+  list_mentorship: () => listMentorship(false),
+
+  get_mentorship: (a) => getMentorship(a.id as string),
+
+  create_mentorship: async (a) => {
+    const slug = a.slug as string;
+    const { data: existing } = await supabaseAdmin
+      .from('mentorship').select('id').eq('slug', slug).maybeSingle();
+    if (existing) return { error: 'slug_conflict', existing_id: existing.id };
+    return upsertMentorship({
+      slug,
+      programme:   a.programme   as string,
+      organiser:   a.organiser   as string,
+      start_date:  a.start_date  as string,
+      end_date:    (a.end_date   as string | undefined) ?? null,
+      description: (a.description as string | undefined) ?? null,
+      tags:        (a.tags        as string[]) ?? [],
+      published:   (a.published   as boolean) ?? false,
+      content:     (a.content     as string | undefined) ?? null,
+    });
+  },
+
+  update_mentorship: async (a) => {
+    const id = a.id as string;
+    const existing = await getMentorship(id);
+    if (!existing) return { error: 'not_found', id };
+    return upsertMentorship({
+      slug:        (a.slug        as string  | undefined) ?? existing.slug,
+      programme:   (a.programme   as string  | undefined) ?? existing.programme,
+      organiser:   (a.organiser   as string  | undefined) ?? existing.organiser,
+      start_date:  (a.start_date  as string  | undefined) ?? existing.start_date,
+      end_date:    (a.end_date    as string  | undefined) ?? null,
+      description: (a.description as string  | undefined) ?? null,
+      tags:        (a.tags        as string[]) ?? [],
+      published:   (a.published   as boolean | undefined) ?? existing.published,
+      content:     (a.content     as string  | undefined) ?? existing.content,
+    }, id);
+  },
+
+  delete_mentorship: (a) => deleteMentorship(a.id as string),
+
+  get_mentorship_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('mentorship')
+      .select('id, slug, programme, content')
+      .eq('id', a.id as string)
+      .maybeSingle();
+    if (error) throw new Error(`get_mentorship_content: ${error.message}`);
+    return data;
+  },
+
+  patch_mentorship_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('mentorship')
+      .update({ content: a.content as string, updated_at: new Date().toISOString() })
+      .eq('id', a.id as string)
+      .select('id, slug')
+      .single();
+    if (error) throw new Error(`patch_mentorship_content: ${error.message}`);
+    return { ...data, updated: true };
+  },
+
   test_company_ats: async (a) => {
     const { scrapeCompany } = await import('@/lib/ats-scraper');
     const { shouldReject } = await import('@/lib/job-filter');
@@ -949,6 +1079,168 @@ const TOOL_SCHEMAS = [
       properties: {
         id:      { type: "string", description: "UUID of the career entry." },
         content: { type: "string", description: "Markdown/MDX content for the career detail page." },
+      },
+    },
+  },
+  // ── Leadership ─────────────────────────────────────────────────────────────
+  {
+    name: "list_leadership",
+    description: "List all leadership entries (including unpublished). Returns id, slug, organisation, body, role, start_date, end_date, description, tags, published, content.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_leadership",
+    description: "Get a single leadership entry by id, including all fields.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the leadership entry." } },
+    },
+  },
+  {
+    name: "create_leadership",
+    description: "Create a new leadership entry. Slug must be unique.",
+    inputSchema: {
+      type: "object",
+      required: ["slug", "organisation", "role", "start_date"],
+      properties: {
+        slug:         { type: "string", description: "URL-safe identifier, e.g. 'ntu-cca-president'. Must be unique." },
+        organisation: { type: "string", description: "Name of the organisation, e.g. 'NTU Chinese Cultural Association'." },
+        body:         { type: "string", description: "Governing body or club name if different from organisation." },
+        role:         { type: "string", description: "Role title, e.g. 'President', 'Vice-Chair'." },
+        start_date:   { type: "string", description: "ISO date, e.g. '2024-08-01'." },
+        end_date:     { type: "string", description: "ISO date. Omit if current role." },
+        description:  { type: "string", description: "Markdown description of responsibilities and impact." },
+        tags:         { type: "array", items: { type: "string" }, description: "e.g. ['leadership','student-life']" },
+        published:    { type: "boolean", default: false },
+        content:      { type: "string", description: "Long-form Markdown case study content." },
+      },
+    },
+  },
+  {
+    name: "update_leadership",
+    description: "Update an existing leadership entry by id. All fields are replaced — call get_leadership first and carry over unchanged fields.",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id:           { type: "string", description: "UUID of the leadership entry to update." },
+        slug:         { type: "string" },
+        organisation: { type: "string" },
+        body:         { type: "string" },
+        role:         { type: "string" },
+        start_date:   { type: "string" },
+        end_date:     { type: "string" },
+        description:  { type: "string" },
+        tags:         { type: "array", items: { type: "string" } },
+        published:    { type: "boolean" },
+        content:      { type: "string" },
+      },
+    },
+  },
+  {
+    name: "delete_leadership",
+    description: "Permanently delete a leadership entry by id.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string" } },
+    },
+  },
+  {
+    name: "get_leadership_content",
+    description: "Get the long-form content field for a leadership entry by id. Returns id, slug, role, content.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the leadership entry." } },
+    },
+  },
+  {
+    name: "patch_leadership_content",
+    description: "Set or replace the content field of a leadership entry. Also bumps updated_at. Returns id, slug, updated: true.",
+    inputSchema: {
+      type: "object", required: ["id", "content"],
+      properties: {
+        id:      { type: "string", description: "UUID of the leadership entry." },
+        content: { type: "string", description: "Markdown/MDX content for the leadership detail page." },
+      },
+    },
+  },
+  // ── Mentorship ─────────────────────────────────────────────────────────────
+  {
+    name: "list_mentorship",
+    description: "List all mentorship entries (including unpublished). Returns id, slug, programme, organiser, start_date, end_date, description, tags, published, content.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_mentorship",
+    description: "Get a single mentorship entry by id, including all fields.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the mentorship entry." } },
+    },
+  },
+  {
+    name: "create_mentorship",
+    description: "Create a new mentorship entry. Slug must be unique.",
+    inputSchema: {
+      type: "object",
+      required: ["slug", "programme", "organiser", "start_date"],
+      properties: {
+        slug:        { type: "string", description: "URL-safe identifier, e.g. 'google-mentorship-2024'. Must be unique." },
+        programme:   { type: "string", description: "Name of the mentorship programme, e.g. 'Google Developer Student Club Mentorship'." },
+        organiser:   { type: "string", description: "Organising institution or company, e.g. 'Google'." },
+        start_date:  { type: "string", description: "ISO date, e.g. '2024-01-01'." },
+        end_date:    { type: "string", description: "ISO date. Omit if ongoing." },
+        description: { type: "string", description: "Markdown description of the mentorship and outcomes." },
+        tags:        { type: "array", items: { type: "string" }, description: "e.g. ['mentorship','google','career']" },
+        published:   { type: "boolean", default: false },
+        content:     { type: "string", description: "Long-form Markdown case study content." },
+      },
+    },
+  },
+  {
+    name: "update_mentorship",
+    description: "Update an existing mentorship entry by id. All fields are replaced — call get_mentorship first and carry over unchanged fields.",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id:          { type: "string", description: "UUID of the mentorship entry to update." },
+        slug:        { type: "string" },
+        programme:   { type: "string" },
+        organiser:   { type: "string" },
+        start_date:  { type: "string" },
+        end_date:    { type: "string" },
+        description: { type: "string" },
+        tags:        { type: "array", items: { type: "string" } },
+        published:   { type: "boolean" },
+        content:     { type: "string" },
+      },
+    },
+  },
+  {
+    name: "delete_mentorship",
+    description: "Permanently delete a mentorship entry by id.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string" } },
+    },
+  },
+  {
+    name: "get_mentorship_content",
+    description: "Get the long-form content field for a mentorship entry by id. Returns id, slug, programme, content.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the mentorship entry." } },
+    },
+  },
+  {
+    name: "patch_mentorship_content",
+    description: "Set or replace the content field of a mentorship entry. Also bumps updated_at. Returns id, slug, updated: true.",
+    inputSchema: {
+      type: "object", required: ["id", "content"],
+      properties: {
+        id:      { type: "string", description: "UUID of the mentorship entry." },
+        content: { type: "string", description: "Markdown/MDX content for the mentorship detail page." },
       },
     },
   },
