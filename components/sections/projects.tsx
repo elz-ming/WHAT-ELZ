@@ -1,9 +1,7 @@
-import { projects, elzOs } from "@/content/projects";
-import type { Project } from "@/content/types";
+import type { Project } from "@/lib/projects";
 
 function StatusBadge({ status }: { status: Project["status"] }) {
-  const label =
-    status === "active" ? "active" : status === "shipped" ? "shipped" : "draft";
+  const label = status === "active" ? "active" : status === "shipped" ? "shipped" : "archived";
   const dot = status === "active" ? "●" : "✓";
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-widest uppercase">
@@ -16,10 +14,10 @@ function StatusBadge({ status }: { status: Project["status"] }) {
 }
 
 function ProjectCard({ project }: { project: Project }) {
-  const Wrapper = project.url ? "a" : "div";
-  const wrapperProps = project.url
+  const Wrapper = project.external_url ? "a" : "div";
+  const wrapperProps = project.external_url
     ? {
-        href: project.url,
+        href: project.external_url,
         target: "_blank" as const,
         rel: "noopener noreferrer",
         "aria-label": `${project.name} — open project`,
@@ -32,8 +30,8 @@ function ProjectCard({ project }: { project: Project }) {
       className="group block border border-zinc-200 p-8 transition-colors hover:border-zinc-900"
     >
       <div className="flex items-center justify-between">
-        <StatusBadge status={project.status} />
-        {project.url && (
+        {project.status && <StatusBadge status={project.status} />}
+        {project.external_url && (
           <span
             aria-hidden="true"
             className="font-mono text-xs text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-[-2px]"
@@ -54,33 +52,36 @@ function ProjectCard({ project }: { project: Project }) {
         {project.description}
       </p>
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-zinc-200 pt-6">
-        {project.metrics.map((m) => (
-          <div key={m.label}>
-            <dt className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
-              {m.label}
-            </dt>
-            <dd className="mt-1 text-sm font-medium">{m.value}</dd>
-          </div>
-        ))}
-      </dl>
+      {project.metrics && project.metrics.length > 0 && (
+        <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-zinc-200 pt-6">
+          {project.metrics.map((m) => (
+            <div key={m.label}>
+              <dt className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+                {m.label}
+              </dt>
+              <dd className="mt-1 text-sm font-medium">{m.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
-      <ul className="mt-6 flex flex-wrap gap-1.5">
-        {project.stack.map((tech) => (
-          <li
-            key={tech}
-            className="border border-zinc-200 px-2 py-1 font-mono text-[10px] tracking-wide text-zinc-600"
-          >
-            {tech}
-          </li>
-        ))}
-      </ul>
+      {project.tech_stack && project.tech_stack.length > 0 && (
+        <ul className="mt-6 flex flex-wrap gap-1.5">
+          {project.tech_stack.map((tech) => (
+            <li
+              key={tech}
+              className="border border-zinc-200 px-2 py-1 font-mono text-[10px] tracking-wide text-zinc-600"
+            >
+              {tech}
+            </li>
+          ))}
+        </ul>
+      )}
     </Wrapper>
   );
 }
 
-export function Projects() {
-  const visible = elzOs ? [...projects, elzOs] : projects;
+export function Projects({ projects }: { projects: Project[] }) {
   return (
     <section
       id="projects"
@@ -99,7 +100,7 @@ export function Projects() {
         </header>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {visible.map((p) => (
+          {projects.map((p) => (
             <ProjectCard key={p.slug} project={p} />
           ))}
         </div>

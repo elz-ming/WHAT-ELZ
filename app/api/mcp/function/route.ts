@@ -17,6 +17,7 @@ import { listHackathons, getHackathon, upsertHackathon, deleteHackathon } from "
 import type { HackathonAward } from "@/lib/hackathons";
 import { listCareer, getCareerBySlug, upsertCareer, deleteCareer } from "@/lib/career";
 import type { CareerEntry } from "@/lib/career";
+import { listProjects, getProject, upsertProject, deleteProject } from "@/lib/projects";
 import {
   listApplications,
   getApplication,
@@ -499,6 +500,63 @@ const TOOLS: Record<string, (args: ToolArgs) => Promise<unknown>> = {
       .single();
     if (error) throw new Error(`update_company_ats: ${error.message}`);
     return { ...data, updated: true };
+  },
+
+  // ── Projects ──────────────────────────────────────────────────────────────
+  list_projects: () => listProjects(false),
+
+  get_project: (a) => getProject(a.id as string),
+
+  create_project: (a) =>
+    upsertProject({
+      slug:         a.slug         as string,
+      name:         a.name         as string,
+      tagline:      a.tagline      as string | undefined,
+      description:  a.description  as string | undefined,
+      status:       a.status       as 'active' | 'shipped' | 'archived' | undefined,
+      type:         a.type         as string | undefined,
+      tech_stack:   a.tech_stack   as string[] | undefined,
+      external_url: a.external_url as string | undefined,
+      published:    (a.published   as boolean | undefined) ?? false,
+    }),
+
+  update_project: async (a) => {
+    const id = a.id as string;
+    const existing = await getProject(id);
+    if (!existing) return { error: 'not_found', id };
+    return upsertProject({
+      id,
+      slug:         (a.slug         as string | undefined) ?? existing.slug,
+      name:         (a.name         as string | undefined) ?? existing.name,
+      tagline:      a.tagline      as string | undefined,
+      description:  a.description  as string | undefined,
+      status:       a.status       as 'active' | 'shipped' | 'archived' | undefined,
+      type:         a.type         as string | undefined,
+      tech_stack:   a.tech_stack   as string[] | undefined,
+      external_url: a.external_url as string | undefined,
+      published:    a.published    as boolean | undefined,
+    });
+  },
+
+  patch_project_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('projects')
+      .update({ content: a.content as string, updated_at: new Date().toISOString() })
+      .eq('id', a.id as string)
+      .select('id, slug')
+      .single();
+    if (error) throw new Error(`patch_project_content: ${error.message}`);
+    return { ...data, updated: true };
+  },
+
+  get_project_content: async (a) => {
+    const { data, error } = await supabaseAdmin
+      .from('projects')
+      .select('id, slug, name, content')
+      .eq('id', a.id as string)
+      .maybeSingle();
+    if (error) throw new Error(`get_project_content: ${error.message}`);
+    return data;
   },
 
   test_company_ats: async (a) => {
@@ -987,6 +1045,78 @@ const TOOL_SCHEMAS = [
     name: "detect_ghosted",
     description: "List submitted applications older than 14 days with no response. Use to identify dead applications that should be marked ghosted.",
     inputSchema: { type: "object", properties: {} },
+  },
+  // ── Projects ───────────────────────────────────────────────────────────────
+  {
+    name: "list_projects",
+    description: "List all projects (including unpublished). Returns all fields.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_project",
+    description: "Get a single project by id, including all fields.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the project." } },
+    },
+  },
+  {
+    name: "create_project",
+    description: "Create a new project. Slug must be unique.",
+    inputSchema: {
+      type: "object",
+      required: ["slug", "name"],
+      properties: {
+        slug:         { type: "string", description: "URL-safe identifier, e.g. 'my-project'. Must be unique." },
+        name:         { type: "string" },
+        tagline:      { type: "string" },
+        description:  { type: "string" },
+        status:       { type: "string", enum: ["active", "shipped", "archived"] },
+        type:         { type: "string", description: "e.g. 'saas', 'personal', 'open-source'" },
+        tech_stack:   { type: "array", items: { type: "string" } },
+        external_url: { type: "string" },
+        published:    { type: "boolean", default: false },
+      },
+    },
+  },
+  {
+    name: "update_project",
+    description: "Update an existing project by id. Only provided fields are changed. Fetches existing record to preserve slug/name if not provided.",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id:           { type: "string", description: "UUID of the project to update." },
+        slug:         { type: "string" },
+        name:         { type: "string" },
+        tagline:      { type: "string" },
+        description:  { type: "string" },
+        status:       { type: "string", enum: ["active", "shipped", "archived"] },
+        type:         { type: "string" },
+        tech_stack:   { type: "array", items: { type: "string" } },
+        external_url: { type: "string" },
+        published:    { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "patch_project_content",
+    description: "Set or replace the content field of a project. Also bumps updated_at. Returns id, slug, updated: true.",
+    inputSchema: {
+      type: "object", required: ["id", "content"],
+      properties: {
+        id:      { type: "string", description: "UUID of the project." },
+        content: { type: "string", description: "Markdown/MDX content for the project detail page." },
+      },
+    },
+  },
+  {
+    name: "get_project_content",
+    description: "Get the long-form content field for a project by id. Returns id, slug, name, content.",
+    inputSchema: {
+      type: "object", required: ["id"],
+      properties: { id: { type: "string", description: "UUID of the project." } },
+    },
   },
   // ── Company / ATS ──────────────────────────────────────────────────────────
   {

@@ -6,20 +6,24 @@ import { Channels } from "@/components/sections/channels";
 import { Contact } from "@/components/sections/contact";
 import { listHackathons } from "@/lib/hackathons";
 import { listCareer } from "@/lib/career";
+import { listProjects } from "@/lib/projects";
+import { listChannels } from "@/lib/channels";
 
 export default async function Home() {
-  const [hackathons, career] = await Promise.all([
+  const [hackathons, career, projects, channels] = await Promise.all([
     listHackathons(true),
     listCareer(true),
+    listProjects(true),
+    listChannels(true),
   ]);
 
   return (
     <main>
       <Hero />
       <Arc entries={career} />
-      <Projects />
+      <Projects projects={projects} />
       <Wins hackathons={hackathons} />
-      <Channels />
+      <Channels channels={channels} />
       <Contact />
     </main>
   );

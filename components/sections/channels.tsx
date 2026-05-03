@@ -1,6 +1,6 @@
-import { channels } from "@/content/channels";
+import type { Channel } from "@/lib/channels";
 
-export function Channels() {
+export function Channels({ channels }: { channels: Channel[] }) {
   return (
     <section
       id="channels"
