@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getHackathon, upsertHackathon, deleteHackathon } from '@/lib/hackathons';
+import { supabaseAdmin } from '@/lib/supabase-server';
 import { HackathonForm } from './_components/HackathonForm';
+import { ContentEditor } from '@/components/admin/ContentEditor';
 
 export const metadata: Metadata = { title: 'Edit Hackathon — whatelz.ai admin' };
 
@@ -45,6 +47,14 @@ async function remove(id: string) {
   await deleteHackathon(id);
 }
 
+async function saveContent(id: string, content: string) {
+  'use server';
+  await supabaseAdmin
+    .from('hackathons')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', id);
+}
+
 export default async function AdminHackathonEditPage({ params }: Props) {
   const { id } = await params;
   const isNew = id === 'new';
@@ -64,6 +74,22 @@ export default async function AdminHackathonEditPage({ params }: Props) {
         onSave={save.bind(null, isNew ? null : id)}
         onDelete={isNew ? null : remove.bind(null, id)}
       />
+
+      {!isNew && (
+        <div className="space-y-4 border-t border-zinc-200 pt-8">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Case Study</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Long-form Markdown rendered on the public hackathon page.
+            </p>
+          </div>
+          <ContentEditor
+            initial={hackathon!.content ?? ''}
+            onSave={saveContent.bind(null, id)}
+            label="Case Study"
+          />
+        </div>
+      )}
     </div>
   );
 }

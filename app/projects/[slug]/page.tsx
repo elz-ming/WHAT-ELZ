@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { listProjects, getProjectBySlug } from "@/lib/projects";
+import { ContentRenderer } from "@/components/shell/ContentRenderer";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -114,6 +115,12 @@ export default async function ProjectDetailPage({ params }: Props) {
               </span>
             ))}
           </div>
+        </section>
+      )}
+
+      {project.content && (
+        <section className="mb-10 border-t border-zinc-100 pt-10">
+          <ContentRenderer content={project.content} />
         </section>
       )}
 

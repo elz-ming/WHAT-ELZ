@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { listCareer } from '@/lib/career';
 
 export const metadata: Metadata = { title: 'Career — whatelz.ai Admin' };
@@ -46,8 +47,14 @@ export default async function AdminCareerPage() {
                   </div>
                 )}
               </div>
-              <div className="shrink-0 font-mono text-xs text-zinc-400">
-                {entry.id.slice(0, 8)}
+              <div className="shrink-0 flex flex-col items-end gap-2">
+                <span className="font-mono text-xs text-zinc-400">{entry.id.slice(0, 8)}</span>
+                <Link
+                  href={`/admin/career/${entry.id}`}
+                  className="font-mono text-xs text-zinc-500 transition-colors hover:text-zinc-900"
+                >
+                  Edit content →
+                </Link>
               </div>
             </div>
             {entry.description && (
