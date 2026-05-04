@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import React from 'react';
 import {
   Document,
+  Font,
   Page,
   Text,
   View,
   StyleSheet,
   renderToBuffer,
 } from '@react-pdf/renderer';
+
+Font.registerHyphenationCallback((word) => [word]);
 import { getResumeVersion, setResumeVersionPdf } from '@/lib/resume-versions';
 import { supabaseAdmin } from '@/lib/supabase-server';
 
@@ -202,7 +205,7 @@ function markdownToPdf(markdown: string, variantName: string): React.ReactElemen
 
   return React.createElement(
     Document,
-    { hyphenationCallback: (word: string) => [word] },
+    null,
     React.createElement(Page, { size: 'A4', style: S.page },
       // Header
       React.createElement(View, { style: S.headerRow },
