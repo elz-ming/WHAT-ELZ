@@ -1,215 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server';
-import React from 'react';
-import {
-  Document,
-  Font,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  renderToBuffer,
-} from '@react-pdf/renderer';
-
-Font.registerHyphenationCallback((word) => [word]);
+import chromium from '@sparticuz/chromium-min';
+import puppeteer from 'puppeteer-core';
+import { marked } from 'marked';
 import { getResumeVersion, setResumeVersionPdf } from '@/lib/resume-versions';
 import { supabaseAdmin } from '@/lib/supabase-server';
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-const S = StyleSheet.create({
-  page:         { padding: 36, fontFamily: 'Helvetica', fontSize: 9, color: '#171717', lineHeight: 1.45 },
-  // Header
-  headerRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 },
-  name:         { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#171717' },
-  variantLabel: { fontSize: 7.5, fontFamily: 'Helvetica', color: '#71717a', letterSpacing: 0.3 },
-  divider:      { borderBottomWidth: 1, borderBottomColor: '#d4d4d8', marginBottom: 10 },
-  // Body columns
-  body:         { flexDirection: 'row' },
-  leftCol:      { width: '50%', paddingRight: 16 },
-  rightCol:     { width: '50%' },
-  // Section
-  section:      { marginBottom: 10 },
-  sectionHead:  { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#3f3f46', textTransform: 'uppercase', letterSpacing: 0.5, borderBottomWidth: 0.5, borderBottomColor: '#d4d4d8', paddingBottom: 2, marginBottom: 4 },
-  // Role blocks
-  roleTitle:    { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
-  rolePeriod:   { fontSize: 8.5, fontFamily: 'Helvetica-Oblique', color: '#71717a', marginBottom: 3 },
-  // Bullets
-  bullet:       { flexDirection: 'row', marginBottom: 1.5 },
-  bulletDot:    { width: 10, color: '#71717a' },
-  bulletText:   { flex: 1 },
-  // Text
-  p:            { marginBottom: 3 },
-  bold:         { fontFamily: 'Helvetica-Bold' },
-  italic:       { fontFamily: 'Helvetica-Oblique' },
-  skillLine:    { fontSize: 8.5, marginBottom: 2 },
-});
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
+// Sparticuz publishes versioned Chromium tarballs; keep in sync with chromium-min's peer range.
+const CHROMIUM_RELEASE_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v133.0.0/chromium-v133.0.0-pack.tar';
 
-// ── Inline parser (bold / italic) ─────────────────────────────────────────────
-let _key = 0;
-function nextKey() { return _key++; }
-
-function parseInline(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(React.createElement(Text, { key: nextKey() }, text.slice(last, m.index)));
-    if (m[2]) parts.push(React.createElement(Text, { key: nextKey(), style: S.bold }, m[2]));
-    else if (m[3]) parts.push(React.createElement(Text, { key: nextKey(), style: S.italic }, m[3]));
-    last = m.index + m[0].length;
+async function getExecutablePath(): Promise<string> {
+  if (process.env.NODE_ENV === 'development') {
+    return (
+      process.env.CHROME_EXECUTABLE_PATH ??
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    );
   }
-  if (last < text.length) parts.push(React.createElement(Text, { key: nextKey() }, text.slice(last)));
-  return parts;
+  return chromium.executablePath(CHROMIUM_RELEASE_URL);
 }
 
-// ── Section parser ────────────────────────────────────────────────────────────
-type Section = { heading: string; lines: string[] };
-
-function parseSections(markdown: string): { name: string; sections: Section[] } {
-  const rawLines = markdown.split('\n');
-  let name = '';
-  const sections: Section[] = [];
-  let current: Section | null = null;
-
-  for (const raw of rawLines) {
-    const line = raw.trimEnd();
-    if (line.startsWith('# ')) { name = line.slice(2).trim(); continue; }
-    if (line.startsWith('---')) continue;
-    if (line.startsWith('## ')) {
-      if (current) sections.push(current);
-      current = { heading: line.slice(3).trim(), lines: [] };
-      continue;
-    }
-    if (current) current.lines.push(line);
+// ── HTML template ─────────────────────────────────────────────────────────────
+function buildHtml(body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    hyphens: none;
+    -webkit-hyphens: none;
+    word-break: normal;
+    overflow-wrap: anywhere;
   }
-  if (current) sections.push(current);
-  return { name, sections };
-}
-
-// ── Column assignment ─────────────────────────────────────────────────────────
-const LEFT_KEYWORDS = ['skill', 'education', 'certif', 'achievement', 'award', 'language', 'tool', 'tech stack', 'project', 'leadership', 'mentorship', 'referee', 'programme'];
-
-function isLeftColumn(heading: string) {
-  const h = heading.toLowerCase();
-  return LEFT_KEYWORDS.some(kw => h.includes(kw));
-}
-
-// ── Section renderer ──────────────────────────────────────────────────────────
-function renderSection(sec: Section): React.ReactElement {
-  const isSkills = sec.heading.toLowerCase().includes('skill') || sec.heading.toLowerCase().includes('tool') || sec.heading.toLowerCase().includes('tech');
-  const isExperience = sec.heading.toLowerCase().includes('experience') || sec.heading.toLowerCase().includes('project');
-
-  const children: React.ReactNode[] = [
-    React.createElement(Text, { key: nextKey(), style: S.sectionHead }, sec.heading.toUpperCase()),
-  ];
-
-  if (isSkills) {
-    const items = sec.lines
-      .filter(l => l.startsWith('- ') || l.startsWith('* '))
-      .map(l => l.slice(2).trim());
-    if (items.length > 0) {
-      children.push(React.createElement(Text, { key: nextKey(), style: S.skillLine }, items.join(', ')));
-    }
-    sec.lines
-      .filter(l => !l.startsWith('- ') && !l.startsWith('* ') && l.trim())
-      .forEach(l => {
-        children.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(l)));
-      });
-  } else if (isExperience) {
-    const blocks: React.ReactElement[] = [];
-    let blockChildren: React.ReactNode[] = [];
-    let inBlock = false;
-
-    const flush = () => {
-      if (inBlock && blockChildren.length) {
-        blocks.push(React.createElement(View, { key: nextKey(), wrap: false, style: { marginBottom: 5 } }, ...blockChildren));
-        blockChildren = [];
-      }
-    };
-
-    for (const line of sec.lines) {
-      const boldTitleMatch = line.match(/^\*\*(.+?)\*\*(.*)/);
-      if (line.startsWith('### ') || boldTitleMatch) {
-        flush();
-        inBlock = true;
-        if (line.startsWith('### ')) {
-          blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.roleTitle }, line.slice(4).trim()));
-        } else if (boldTitleMatch) {
-          blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.roleTitle }, boldTitleMatch[1].trim()));
-          const afterTitle = boldTitleMatch[2].replace(/^\s*\|\s*/, '').trim();
-          if (afterTitle) {
-            const italicMatch = afterTitle.match(/^\*([^*]+)\*(.*)/);
-            if (italicMatch) {
-              blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.rolePeriod }, italicMatch[1]));
-              const rest = italicMatch[2].replace(/^\s*\|\s*/, '').trim();
-              if (rest) blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(rest)));
-            } else {
-              blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(afterTitle)));
-            }
-          }
-        }
-      } else if (line.trim() === '') {
-        // skip blank lines
-      } else if (/^\*[^*]/.test(line.trim()) && line.trim().endsWith('*')) {
-        const inner = line.trim().slice(1, -1);
-        blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.rolePeriod }, inner));
-      } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        blockChildren.push(
-          React.createElement(View, { key: nextKey(), style: S.bullet },
-            React.createElement(Text, { style: S.bulletDot }, '•'),
-            React.createElement(Text, { style: S.bulletText }, ...parseInline(line.slice(2))),
-          )
-        );
-      } else if (line.trim()) {
-        blockChildren.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(line)));
-      }
-    }
-    flush();
-    children.push(...blocks);
-  } else {
-    for (const line of sec.lines) {
-      if (!line.trim()) continue;
-      if (line.startsWith('- ') || line.startsWith('* ')) {
-        children.push(
-          React.createElement(View, { key: nextKey(), style: S.bullet },
-            React.createElement(Text, { style: S.bulletDot }, '•'),
-            React.createElement(Text, { style: S.bulletText }, ...parseInline(line.slice(2))),
-          )
-        );
-      } else {
-        children.push(React.createElement(Text, { key: nextKey(), style: S.p }, ...parseInline(line)));
-      }
-    }
+  body {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    color: #1a1a1a;
+    text-align: left;
   }
-
-  return React.createElement(View, { key: nextKey(), style: S.section }, ...children);
-}
-
-// ── Main builder ──────────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function markdownToPdf(markdown: string, variantName: string): React.ReactElement<any> {
-  _key = 0;
-  const { name, sections } = parseSections(markdown);
-
-  const left  = sections.filter(s => isLeftColumn(s.heading)).map(renderSection);
-  const right = sections.filter(s => !isLeftColumn(s.heading)).map(renderSection);
-
-  return React.createElement(
-    Document,
-    null,
-    React.createElement(Page, { size: 'A4', style: S.page },
-      React.createElement(View, { style: S.headerRow },
-        React.createElement(Text, { style: S.name }, name || variantName),
-        React.createElement(Text, { style: S.variantLabel }, variantName.toUpperCase()),
-      ),
-      React.createElement(View, { style: S.divider }),
-      React.createElement(View, { style: S.body },
-        React.createElement(View, { style: S.leftCol }, ...left),
-        React.createElement(View, { style: S.rightCol }, ...right),
-      ),
-    ),
-  );
+  h1 {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 4pt;
+  }
+  h2 {
+    font-size: 11pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #333;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 3pt;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+  }
+  h3 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #111;
+    margin-top: 8pt;
+    margin-bottom: 1pt;
+  }
+  p {
+    margin-bottom: 3pt;
+  }
+  p:empty { display: none; }
+  em {
+    font-style: italic;
+    color: #555;
+  }
+  strong {
+    font-weight: 700;
+  }
+  ul {
+    margin: 3pt 0 3pt 0.25in;
+    padding: 0;
+    list-style-type: disc;
+  }
+  li {
+    margin-bottom: 2pt;
+    padding-left: 2pt;
+  }
+  hr {
+    display: none;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 6pt;
+    font-size: 10pt;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 3pt 5pt;
+    text-align: left;
+  }
+  th {
+    font-weight: 700;
+    background: #f5f5f5;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 9.5pt;
+    background: #f5f5f5;
+    padding: 0 2pt;
+  }
+</style>
+</head>
+<body>
+${body}
+</body>
+</html>`;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
@@ -224,19 +133,50 @@ export async function POST(
   if (!version) return NextResponse.json({ error: 'Variant not found' }, { status: 404 });
   if (!version.content.trim()) return NextResponse.json({ error: 'No content to export' }, { status: 400 });
 
-  const doc = markdownToPdf(version.content, decoded);
-  const buffer = await renderToBuffer(doc);
+  // markdown → HTML
+  const htmlBody = marked.parse(version.content, { gfm: true }) as string;
+  const fullHtml = buildHtml(htmlBody);
 
+  // Launch Puppeteer
+  const isDev = process.env.NODE_ENV === 'development';
+  const executablePath = await getExecutablePath();
+
+  const browser = await puppeteer.launch({
+    args: isDev ? ['--no-sandbox'] : chromium.args,
+    defaultViewport: null,
+    executablePath,
+    headless: true,
+  });
+
+  let pdfBuffer: Buffer;
+  try {
+    const page = await browser.newPage();
+    await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
+    const raw = await page.pdf({
+      format: 'Letter',
+      printBackground: false,
+      margin: { top: '0.5in', right: '0.6in', bottom: '0.5in', left: '0.6in' },
+    });
+    pdfBuffer = Buffer.from(raw);
+  } finally {
+    await browser.close();
+  }
+
+  // Upload to Supabase Storage
   const slug = decoded.toLowerCase().replace(/\s+/g, '-');
   const path = `${slug}/resume-${Date.now()}.pdf`;
 
   const { error: uploadError } = await supabaseAdmin.storage
     .from('resumes')
-    .upload(path, buffer, { contentType: 'application/pdf', upsert: true });
+    .upload(path, pdfBuffer, { contentType: 'application/pdf', upsert: true });
 
   if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
 
-  const { data: urlData } = supabaseAdmin.storage.from('resumes').getPublicUrl(path);
+  // Build public URL with human-readable download filename
+  const downloadName = `EdmundLin_${decoded.replace(/\s+/g, '')}_Resume.pdf`;
+  const { data: urlData } = supabaseAdmin.storage.from('resumes').getPublicUrl(path, {
+    download: downloadName,
+  });
   const pdf_url = urlData.publicUrl;
 
   await setResumeVersionPdf(decoded, pdf_url, path);
